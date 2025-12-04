@@ -1,5 +1,5 @@
-# Data directory (excluded entirely)
-data/
+# Data directory (excluded entirely) - matches only root-level data/ directory
+/data/
 
 # Project tooling
 .claude/
