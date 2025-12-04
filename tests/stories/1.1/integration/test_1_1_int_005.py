@@ -34,7 +34,7 @@ def test_1_1_int_005() -> None:
     # Project-specific
     # norgatedata: Windows-only, accessed via bridge (not imported directly in WSL)
     import numpy
-    import pandas  # type: ignore[import-untyped]
+    import pandas
     import pyarrow  # type: ignore[import-untyped]  # noqa: F401
 
     # Testing

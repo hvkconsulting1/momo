@@ -257,9 +257,7 @@ def fetch_price_data(
 
     except (KeyError, ValueError, TypeError) as e:
         logger.error("price_data_parse_failed", error=str(e), result_type=type(result))
-        raise NorgateBridgeError(
-            f"Failed to parse price data from bridge: {e}"
-        ) from e
+        raise NorgateBridgeError(f"Failed to parse price data from bridge: {e}") from e
 
 
 def check_ndu_status(timeout: int = 10) -> bool:
