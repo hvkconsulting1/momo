@@ -106,8 +106,10 @@ print(json.dumps(result, default=str))
             )
 
         # Generic error
-        logger.error("bridge_execution_failed", stderr=result.stderr)
-        raise NorgateBridgeError(f"Bridge execution failed: {result.stderr}")
+        logger.error("bridge_execution_failed", stderr=result.stderr, stdout=result.stdout)
+        raise NorgateBridgeError(
+            f"Bridge execution failed:\nStderr: {result.stderr}\nStdout: {result.stdout}"
+        )
 
     # Parse JSON from last line (skip norgatedata INFO messages)
     try:
