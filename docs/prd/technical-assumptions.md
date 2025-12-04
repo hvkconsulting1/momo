@@ -116,7 +116,7 @@ The MVP implementation replicates the classic academic momentum strategy with th
 - **Testing framework:** pytest for all automated tests
 
 **Security & Configuration:**
-- **Norgate credentials:** Store securely via environment variables or gitignored config file
+- **Norgate credentials:** Pre-configured in NDU Windows application; Python code accesses NDU via Windows Python bridge without handling credentials directly
 - **Data directory:** .gitignore data/ folder to avoid committing large price datasets
 - **No PII/sensitive data:** Framework handles only public market data
 

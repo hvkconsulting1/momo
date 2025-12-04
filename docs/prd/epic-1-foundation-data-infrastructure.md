@@ -1,6 +1,6 @@
 # Epic 1: Foundation & Data Infrastructure
 
-**Epic Goal:** Establish project setup with proper repository structure and dependency management, integrate Norgate Data API with secure authentication, implement data loading and caching to Parquet files, build data quality validation pipeline, and create end-to-end verification demonstrating the complete data flow works correctly. This epic delivers the foundational data infrastructure required for all subsequent strategy development.
+**Epic Goal:** Establish project setup with proper repository structure and dependency management, integrate Norgate Data API via Windows Python bridge, implement data loading and caching to Parquet files, build data quality validation pipeline, and create end-to-end verification demonstrating the complete data flow works correctly. This epic delivers the foundational data infrastructure required for all subsequent strategy development.
 
 ## Story 1.0: Norgate Data API Exploration Spike (Research)
 
@@ -100,21 +100,20 @@ The spike results in **GO** only if ALL of the following are confirmed:
 7. Basic package structure allows `import src` from project root
 8. All directory structures can be verified via automated test or script
 
-## Story 1.2: Integrate Norgate Data API with Secure Authentication
+## Story 1.2: Integrate Norgate Data API via Windows Python Bridge
 
 **As a** developer,
-**I want** to connect to Norgate Data API with secure credential handling,
+**I want** to connect to Norgate Data API via the Windows Python bridge,
 **so that** I can retrieve historical price data for backtesting.
 
 ### Acceptance Criteria
 
 1. `norgatedata` Python package is installed and importable
-2. Norgate credentials are loaded from environment variables or gitignored config file (never hardcoded)
-3. A configuration module (`src/data/config.py`) provides centralized access to Norgate credentials
-4. Basic connection test successfully authenticates and retrieves a sample ticker's price data
-5. Error handling provides clear messages if credentials are missing or invalid
-6. Documentation in `docs/` explains how to set up Norgate credentials for local development
-7. Unit test verifies configuration loading (using mock credentials)
+2. Windows Python bridge module (`src/data/bridge.py`) implements subprocess-based NDU communication following the pattern from Story 1.0 exploration
+3. Basic connection test successfully retrieves a sample ticker's price data via the bridge
+4. Error handling provides clear messages if NDU is not running or accessible
+5. Documentation in `docs/` explains the Windows Python bridge architecture and NDU prerequisites (Windows environment with NDU running and authenticated)
+6. Unit test verifies bridge communication using mock subprocess responses
 
 ## Story 1.3: Implement Data Loading and Parquet Caching
 
@@ -193,4 +192,4 @@ The spike results in **GO** only if ALL of the following are confirmed:
 6. Simple visualization (e.g., price chart for 2-3 tickers) confirms data looks reasonable
 7. Pipeline completes successfully with clear logging indicating each step (fetch → cache → validate → report)
 8. Documentation in `docs/` or notebook explains how to run the verification and interpret results
-9. Test can be run locally by any developer with valid Norgate credentials
+9. Test can be run locally by any developer on Windows environment with NDU installed, running, and authenticated with valid Norgate subscription
