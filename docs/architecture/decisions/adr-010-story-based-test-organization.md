@@ -69,13 +69,13 @@ tests/
 │   │   ├── conftest.py                 # Story-specific fixtures
 │   │   ├── README.md                   # Story test documentation
 │   │   ├── unit/
-│   │   │   ├── {story-id}-UNIT-{seq}.py    # e.g., 1.1-UNIT-001.py
+│   │   │   ├── test_{story_id}_unit_{seq}.py    # e.g., test_1_1_unit_001.py
 │   │   │   └── ...
 │   │   ├── integration/
-│   │   │   ├── {story-id}-INT-{seq}.py
+│   │   │   ├── test_{story_id}_int_{seq}.py
 │   │   │   └── ...
 │   │   └── e2e/
-│   │       └── {story-id}-E2E-{seq}.py
+│   │       └── test_{story_id}_e2e_{seq}.py
 │   └── TEST_REGISTRY.md                # Auto-generated test ID → file mapping
 ├── fixtures/                            # Shared test data
 └── utils/                               # Test utilities
@@ -83,14 +83,14 @@ tests/
 
 ### File Naming Convention
 
-**Pattern**: `{story-id}-{LEVEL}-{seq}.py`
-- `story-id`: Story number (e.g., `1.1`, `2.3`)
-- `LEVEL`: `UNIT`, `INT`, `E2E`
+**Pattern**: `test_{story_id}_{level}_{seq}.py`
+- `story_id`: Story number with underscores (e.g., `1_1`, `2_3`)
+- `level`: Lowercase test level (`unit`, `int`, `e2e`)
 - `seq`: Zero-padded 3-digit sequence (e.g., `001`, `042`)
 
 **Examples**:
-- `1.1-UNIT-001.py` - Story 1.1, Unit test #1
-- `2.3-INT-015.py` - Story 2.3, Integration test #15
+- `test_1_1_unit_001.py` - Story 1.1, Unit test #1
+- `test_2_3_int_015.py` - Story 2.3, Integration test #15
 
 ### Test Function Naming
 
@@ -103,8 +103,8 @@ tests/
 ### Deterministic Mapping
 
 Test ID from test design document maps directly to file path:
-- Test ID `1.1-UNIT-001` → `tests/stories/1.1/unit/1.1-UNIT-001.py`
-- Test ID `2.1-INT-003` → `tests/stories/2.1/integration/2.1-INT-003.py`
+- Test ID `1.1-UNIT-001` → `tests/stories/1.1/unit/test_1_1_unit_001.py`
+- Test ID `2.1-INT-003` → `tests/stories/2.1/integration/test_2_1_int_003.py`
 
 No search required. No ambiguity.
 
@@ -121,7 +121,7 @@ No search required. No ambiguity.
 pytest tests/stories/1.1/ -v
 
 # Single test by ID
-pytest tests/stories/1.1/unit/1.1-UNIT-001.py -v
+pytest tests/stories/1.1/unit/test_1_1_unit_001.py -v
 
 # All P0 tests
 pytest -m p0 -v

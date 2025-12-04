@@ -18,7 +18,7 @@
 | Date variables | Suffix `_date` | `start_date` |
 | Config dataclasses | Suffix `Config` | `StrategyConfig` |
 | Test fixtures | Prefix `sample_` | `sample_prices_df` |
-| Test files | `{story}-{LEVEL}-{seq}.py` | `1.1-UNIT-001.py` |
+| Test files | `test_{story_id}_{level}_{seq}.py` | `test_1_1_unit_001.py` |
 | Test functions | `test_{story}_{level}_{seq}()` | `test_1_1_unit_001()` |
 
 ## Critical Rules
@@ -29,7 +29,7 @@
 4. **Explicit Date Handling** - Use `datetime.date`, not strings
 5. **No Magic Numbers** - Name all constants or use config
 6. **Validate at Layer Boundaries** - Data layer validates; inner layers trust input
-7. **Test File Naming** - `{story-id}-{LEVEL}-{seq}.py` (e.g., `1.1-UNIT-001.py`)
+7. **Test File Naming** - `test_{story_id}_{level}_{seq}.py` (e.g., `test_1_1_unit_001.py`)
 8. **Test Function Naming** - `test_{story}_{level}_{seq}()` (primary function in each file)
 9. **One Test Per File Principle** - Each test ID gets exactly one file for deterministic AI agent mapping
 10. **No Relative Imports Across Layers** - Use absolute imports from `momo`

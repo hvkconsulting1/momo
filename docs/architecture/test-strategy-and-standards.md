@@ -25,7 +25,7 @@ Traditional test organization by layer (`tests/unit/data/`, `tests/unit/signals/
 - **Lifecycle mismatch** when story is complete but tests remain scattered
 
 **Story-based organization** creates a deterministic mapping:
-- Test ID `1.1-UNIT-001` → File `tests/stories/1.1/unit/1.1-UNIT-001.py`
+- Test ID `1.1-UNIT-001` → File `tests/stories/1.1/unit/test_1_1_unit_001.py`
 - Story lifecycle = test lifecycle (ship story → archive test directory)
 - Zero merge conflicts (one test per file)
 - Perfect AI agent traceability
@@ -56,11 +56,11 @@ tests/
 │   │   ├── conftest.py                 # Story-specific fixtures
 │   │   ├── README.md                   # Story test suite documentation
 │   │   ├── unit/
-│   │   │   ├── 1.1-UNIT-001.py        # Verify top-level directories
-│   │   │   ├── 1.1-UNIT-002.py        # Verify data/ subdirectories
+│   │   │   ├── test_1_1_unit_001.py        # Verify top-level directories
+│   │   │   ├── test_1_1_unit_002.py        # Verify data/ subdirectories
 │   │   │   └── ...
 │   │   └── integration/
-│   │       ├── 1.1-INT-001.py         # uv sync resolves dependencies
+│   │       ├── test_1_1_int_001.py         # uv sync resolves dependencies
 │   │       └── ...
 │   │
 │   ├── 2.1/                            # Story 2.1: Norgate Data Bridge
@@ -89,23 +89,23 @@ tests/
 
 ### Test File Naming
 
-**Pattern**: `{story-id}-{test-level}-{sequence}.py`
+**Pattern**: `test_{story_id}_{level}_{seq}.py`
 
-- `story-id`: Story number (e.g., `1.1`, `2.3`, `10.5`)
-- `test-level`: `UNIT`, `INT` (integration), `E2E` (end-to-end)
-- `sequence`: Zero-padded 3-digit number (e.g., `001`, `042`, `123`)
+- `story_id`: Story number with underscores (e.g., `1_1`, `2_3`, `10_5`)
+- `level`: Lowercase test level (`unit`, `int`, `e2e`)
+- `seq`: Zero-padded 3-digit number (e.g., `001`, `042`, `123`)
 
 **Examples**:
-- `1.1-UNIT-001.py` - Story 1.1, Unit test #1
-- `2.3-INT-015.py` - Story 2.3, Integration test #15
-- `5.1-E2E-003.py` - Story 5.1, E2E test #3
+- `test_1_1_unit_001.py` - Story 1.1, Unit test #1
+- `test_2_3_int_015.py` - Story 2.3, Integration test #15
+- `test_5_1_e2e_003.py` - Story 5.1, E2E test #3
 
 ### Test Function Naming
 
 **One test function per file** (primary rule), but if multiple variants needed:
 
 ```python
-# File: 1.1-UNIT-001.py
+# File: test_1_1_unit_001.py
 def test_1_1_unit_001():
     """Primary test function matching test ID."""
     # Main test logic
@@ -173,7 +173,7 @@ def test_{story}_{level}_{seq}():
     # ... verify
 ```
 
-### Example: 1.1-UNIT-001.py
+### Example: test_1_1_unit_001.py
 
 ```python
 """
@@ -299,7 +299,7 @@ def temp_data_file(project_root):
 **Purpose**: Unique setup for one test ID
 
 ```python
-# In file: 1.1-INT-003.py
+# In file: test_1_1_int_003.py
 
 @pytest.fixture
 def git_test_file(project_root):
@@ -406,12 +406,12 @@ pytest tests/stories/*/integration/ -v
 
 ```bash
 # Single test by ID
-pytest tests/stories/1.1/unit/1.1-UNIT-001.py -v
+pytest tests/stories/1.1/unit/test_1_1_unit_001.py -v
 
 # Multiple specific test IDs
-pytest tests/stories/1.1/unit/1.1-UNIT-001.py \
-       tests/stories/1.1/unit/1.1-UNIT-005.py \
-       tests/stories/1.1/integration/1.1-INT-004.py -v
+pytest tests/stories/1.1/unit/test_1_1_unit_001.py \
+       tests/stories/1.1/unit/test_1_1_unit_005.py \
+       tests/stories/1.1/integration/test_1_1_int_004.py -v
 ```
 
 #### Run by Priority (using markers)
@@ -450,9 +450,9 @@ pytest tests/stories/2.1/ --cov=src/momo/data --cov-report=term-missing
 **Agent Workflow**:
 1. Read `docs/qa/assessments/1.1-test-design-20251203.md`
 2. Find test IDs for Commit 2
-3. Create files: `tests/stories/1.1/unit/1.1-UNIT-012.py`, etc.
+3. Create files: `tests/stories/1.1/unit/test_1_1_unit_012.py`, etc.
 4. Write test code exactly as specified in test design
-5. Run: `pytest tests/stories/1.1/unit/1.1-UNIT-012.py -v`
+5. Run: `pytest tests/stories/1.1/unit/test_1_1_unit_012.py -v`
 6. Verify: Test fails (red phase)
 7. Implement minimal code to pass
 8. Verify: Test passes (green phase)
@@ -465,9 +465,9 @@ pytest tests/stories/2.1/ --cov=src/momo/data --cov-report=term-missing
 **Human**: "Fix test 1.1-INT-003"
 
 **Agent Workflow**:
-1. Locate file: `tests/stories/1.1/integration/1.1-INT-003.py`
+1. Locate file: `tests/stories/1.1/integration/test_1_1_int_003.py`
 2. Read test code
-3. Run: `pytest tests/stories/1.1/integration/1.1-INT-003.py -v`
+3. Run: `pytest tests/stories/1.1/integration/test_1_1_int_003.py -v`
 4. Analyze failure
 5. Fix implementation (not test code)
 6. Verify: Test passes
@@ -478,9 +478,9 @@ pytest tests/stories/2.1/ --cov=src/momo/data --cov-report=term-missing
 
 **Scenario**: 3 agents implement Commit 1 of Story 1.1 in parallel
 
-- **Agent A**: Implements `1.1-UNIT-001.py`, `1.1-UNIT-002.py`
-- **Agent B**: Implements `1.1-UNIT-003.py`, `1.1-UNIT-004.py`
-- **Agent C**: Implements `1.1-UNIT-005.py`, `1.1-UNIT-006.py`
+- **Agent A**: Implements `test_1_1_unit_001.py`, `test_1_1_unit_002.py`
+- **Agent B**: Implements `test_1_1_unit_003.py`, `test_1_1_unit_004.py`
+- **Agent C**: Implements `test_1_1_unit_005.py`, `test_1_1_unit_006.py`
 
 **Result**: Zero merge conflicts (different files), perfect parallel execution.
 

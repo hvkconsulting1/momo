@@ -76,11 +76,11 @@ momo/
 │   │   │   ├── conftest.py          # Story-specific fixtures
 │   │   │   ├── README.md            # Story test suite documentation
 │   │   │   ├── unit/
-│   │   │   │   ├── 1.1-UNIT-001.py # Verify top-level directories
-│   │   │   │   ├── 1.1-UNIT-002.py # Verify data/ subdirectories
+│   │   │   │   ├── test_1_1_unit_001.py # Verify top-level directories
+│   │   │   │   ├── test_1_1_unit_002.py # Verify data/ subdirectories
 │   │   │   │   └── ...
 │   │   │   └── integration/
-│   │   │       ├── 1.1-INT-001.py  # uv sync resolves dependencies
+│   │   │       ├── test_1_1_int_001.py  # uv sync resolves dependencies
 │   │   │       └── ...
 │   │   │
 │   │   ├── 2.1/                     # Story 2.1: Norgate Data Bridge
