@@ -13,11 +13,12 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:1161
 """
 
 import sys
+from pathlib import Path
 
 import pytest
 
 
-def test_1_1_int_007(project_root):
+def test_1_1_int_007(project_root: Path) -> None:
     """
     1.1-INT-007: Verify 'import momo' succeeds from project root
 

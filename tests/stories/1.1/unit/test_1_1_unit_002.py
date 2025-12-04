@@ -12,8 +12,10 @@ Acceptance Criteria: AC1
 Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:296
 """
 
+from pathlib import Path
 
-def test_1_1_unit_002(data_dir):
+
+def test_1_1_unit_002(data_dir: Path) -> None:
     """
     1.1-UNIT-002: Verify data/ subdirectories exist
 

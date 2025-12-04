@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 
-def test_1_1_int_002():
+def test_1_1_int_002() -> None:
     """
     1.1-INT-002: Verify Python 3.13 is available and executable
 

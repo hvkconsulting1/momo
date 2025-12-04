@@ -13,9 +13,10 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:786
 """
 
 import subprocess
+from pathlib import Path
 
 
-def test_1_1_int_001(project_root):
+def test_1_1_int_001(project_root: Path) -> None:
     """
     1.1-INT-001: Verify uv sync resolves dependencies
 

@@ -12,8 +12,10 @@ Acceptance Criteria: AC1
 Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:245
 """
 
+from pathlib import Path
 
-def test_1_1_unit_001(project_root):
+
+def test_1_1_unit_001(project_root: Path) -> None:
     """
     1.1-UNIT-001: Verify all top-level directories exist
 
