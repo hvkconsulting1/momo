@@ -109,7 +109,7 @@ The spike results in **GO** only if ALL of the following are confirmed:
 ### Acceptance Criteria
 
 1. `norgatedata` Python package is installed and importable
-2. Windows Python bridge module (`src/data/bridge.py`) implements subprocess-based NDU communication following the pattern from Story 1.0 exploration
+2. Windows Python bridge module (`src/momo/data/bridge.py`) implements subprocess-based NDU communication following the pattern from Story 1.0 exploration
 3. Basic connection test successfully retrieves a sample ticker's price data via the bridge
 4. Error handling provides clear messages if NDU is not running or accessible
 5. Documentation in `docs/` explains the Windows Python bridge architecture and NDU prerequisites (Windows environment with NDU running and authenticated)
