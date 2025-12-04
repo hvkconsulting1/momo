@@ -15,8 +15,6 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:894
 import subprocess
 from pathlib import Path
 
-import pytest
-
 
 def test_1_1_int_003(project_root: Path, data_dir: Path) -> None:
     """
@@ -44,9 +42,9 @@ def test_1_1_int_003(project_root: Path, data_dir: Path) -> None:
         assert result.returncode == 0, "git status failed"
 
         # Check that test file is NOT in output
-        assert "data/test-file.txt" not in result.stdout, (
-            "data/test-file.txt appears in git status - .gitignore not working"
-        )
+        assert (
+            "data/test-file.txt" not in result.stdout
+        ), "data/test-file.txt appears in git status - .gitignore not working"
 
     finally:
         # Clean up test file

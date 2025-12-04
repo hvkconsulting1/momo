@@ -14,7 +14,6 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:959
 
 from pathlib import Path
 
-import pytest
 import tomli
 
 
@@ -37,8 +36,7 @@ def test_1_1_int_004(project_root: Path) -> None:
     # Extract dependencies
     dependencies = pyproject.get("project", {}).get("dependencies", [])
     dep_names = [
-        dep.split("[")[0].split(">=")[0].split("~=")[0].split("==")[0]
-        for dep in dependencies
+        dep.split("[")[0].split(">=")[0].split("~=")[0].split("==")[0] for dep in dependencies
     ]
 
     # Required core dependencies from tech-stack.md
@@ -60,12 +58,9 @@ def test_1_1_int_004(project_root: Path) -> None:
     # Check dev dependencies (try both dependency-groups and optional-dependencies)
     dev_deps = pyproject.get("dependency-groups", {}).get("dev", [])
     if not dev_deps:
-        dev_deps = (
-            pyproject.get("project", {}).get("optional-dependencies", {}).get("dev", [])
-        )
+        dev_deps = pyproject.get("project", {}).get("optional-dependencies", {}).get("dev", [])
     dev_dep_names = [
-        dep.split("[")[0].split(">=")[0].split("~=")[0].split("==")[0]
-        for dep in dev_deps
+        dep.split("[")[0].split(">=")[0].split("~=")[0].split("==")[0] for dep in dev_deps
     ]
 
     required_dev_deps = [

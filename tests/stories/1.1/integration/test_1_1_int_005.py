@@ -12,8 +12,6 @@ Acceptance Criteria: AC4
 Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:1047
 """
 
-import pytest
-
 
 def test_1_1_int_005() -> None:
     """
@@ -26,32 +24,27 @@ def test_1_1_int_005() -> None:
     Failure mode: Missing wheels, compilation errors, version conflicts
     """
     # Core data dependencies
-    import numpy
-    import pandas
-    import pyarrow
-    import scipy
+    # Notebooks
+    import jupyter  # type: ignore[import-untyped]  # noqa: F401
+    import jupyterlab  # type: ignore[import-untyped]  # noqa: F401
 
     # Visualization
-    import matplotlib
-    import seaborn
-
-    # Notebooks
-    import jupyter
-    import jupyterlab
-
-    # Testing
-    import pytest as pytest_module
+    import matplotlib  # noqa: F401
 
     # Project-specific
-    import norgatedata
-    import statsmodels
-    import structlog
-    import tenacity
+    import norgatedata  # noqa: F401
+    import numpy
+    import pandas  # type: ignore[import-untyped]
+    import pyarrow  # type: ignore[import-untyped]  # noqa: F401
+
+    # Testing
+    import pytest as pytest_module  # noqa: F401
+    import scipy  # type: ignore[import-untyped]  # noqa: F401
+    import seaborn  # noqa: F401
+    import statsmodels  # type: ignore[import-untyped]  # noqa: F401
+    import structlog  # noqa: F401
+    import tenacity  # noqa: F401
 
     # Verify versions are reasonable (basic sanity check)
-    assert pandas.__version__.startswith(
-        "2.2"
-    ), f"Unexpected pandas version: {pandas.__version__}"
-    assert numpy.__version__.startswith(
-        "2.1"
-    ), f"Unexpected numpy version: {numpy.__version__}"
+    assert pandas.__version__.startswith("2.2"), f"Unexpected pandas version: {pandas.__version__}"
+    assert numpy.__version__.startswith("2.1"), f"Unexpected numpy version: {numpy.__version__}"
