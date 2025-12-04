@@ -40,26 +40,25 @@ def test_1_2_unit_009() -> None:
     """
     # Arrange: Mock execute_norgate_code with JSON DataFrame data
     with patch("momo.data.bridge.execute_norgate_code") as mock_execute:
-        mock_execute.return_value = {
-            "data": [
-                {
-                    "date": "2023-01-03",
-                    "open": 125.07,
-                    "high": 125.27,
-                    "low": 124.17,
-                    "close": 125.07,
-                    "volume": 112117471,
-                },
-                {
-                    "date": "2023-01-04",
-                    "open": 126.89,
-                    "high": 128.66,
-                    "low": 125.08,
-                    "close": 126.36,
-                    "volume": 89113631,
-                },
-            ]
-        }
+        # Return list of dicts (as returned by lambda expression)
+        mock_execute.return_value = [
+            {
+                "date": "2023-01-03",
+                "open": 125.07,
+                "high": 125.27,
+                "low": 124.17,
+                "close": 125.07,
+                "volume": 112117471,
+            },
+            {
+                "date": "2023-01-04",
+                "open": 126.89,
+                "high": 128.66,
+                "low": 125.08,
+                "close": 126.36,
+                "volume": 89113631,
+            },
+        ]
 
         # Act: Call fetch_price_data
         result_df = fetch_price_data(symbol="AAPL")
@@ -149,18 +148,17 @@ def test_1_2_unit_009_missing_columns() -> None:
     """
     # Arrange: Mock with incomplete data (missing 'close' column)
     with patch("momo.data.bridge.execute_norgate_code") as mock_execute:
-        mock_execute.return_value = {
-            "data": [
-                {
-                    "date": "2023-01-03",
-                    "open": 125.07,
-                    "high": 125.27,
-                    "low": 124.17,
-                    # Missing 'close' column
-                    "volume": 112117471,
-                }
-            ]
-        }
+        # Return list of dicts with missing 'close' column
+        mock_execute.return_value = [
+            {
+                "date": "2023-01-03",
+                "open": 125.07,
+                "high": 125.27,
+                "low": 124.17,
+                # Missing 'close' column
+                "volume": 112117471,
+            }
+        ]
 
         # Act & Assert: Verify error raised
         from momo.utils.exceptions import NorgateBridgeError
@@ -168,8 +166,8 @@ def test_1_2_unit_009_missing_columns() -> None:
         with pytest.raises(NorgateBridgeError) as exc_info:
             fetch_price_data(symbol="AAPL")
 
-        assert "Missing required columns" in str(exc_info.value), (
-            f"Error should mention missing columns\n" f"Actual error: {exc_info.value}"
+        assert "Failed to parse price data from bridge" in str(exc_info.value), (
+            f"Error should mention parsing failure\n" f"Actual error: {exc_info.value}"
         )
 
 
@@ -190,6 +188,6 @@ def test_1_2_unit_009_invalid_format() -> None:
         with pytest.raises(NorgateBridgeError) as exc_info:
             fetch_price_data(symbol="AAPL")
 
-        assert "Unexpected result format" in str(exc_info.value), (
-            f"Error should mention unexpected format\n" f"Actual error: {exc_info.value}"
+        assert "Expected list of records" in str(exc_info.value), (
+            f"Error should mention expected list format\n" f"Actual error: {exc_info.value}"
         )

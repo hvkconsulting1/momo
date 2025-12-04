@@ -37,19 +37,17 @@ def test_1_2_unit_008() -> None:
     """
     # Arrange: Mock execute_norgate_code to capture the code parameter
     with patch("momo.data.bridge.execute_norgate_code") as mock_execute:
-        # Return mock DataFrame data
-        mock_execute.return_value = {
-            "data": [
-                {
-                    "date": "2023-01-03",
-                    "open": 125.07,
-                    "high": 125.27,
-                    "low": 124.17,
-                    "close": 125.07,
-                    "volume": 112117471,
-                }
-            ]
-        }
+        # Return mock DataFrame data (list of dicts, as returned by lambda expression)
+        mock_execute.return_value = [
+            {
+                "date": "2023-01-03",
+                "open": 125.07,
+                "high": 125.27,
+                "low": 124.17,
+                "close": 125.07,
+                "volume": 112117471,
+            }
+        ]
 
         # Act: Call fetch_price_data with all parameters
         result_df = fetch_price_data(
@@ -108,18 +106,17 @@ def test_1_2_unit_008_defaults() -> None:
     """
     # Arrange: Mock execute_norgate_code
     with patch("momo.data.bridge.execute_norgate_code") as mock_execute:
-        mock_execute.return_value = {
-            "data": [
-                {
-                    "date": "2023-01-03",
-                    "open": 125.07,
-                    "high": 125.27,
-                    "low": 124.17,
-                    "close": 125.07,
-                    "volume": 112117471,
-                }
-            ]
-        }
+        # Return mock DataFrame data (list of dicts, as returned by lambda expression)
+        mock_execute.return_value = [
+            {
+                "date": "2023-01-03",
+                "open": 125.07,
+                "high": 125.27,
+                "low": 124.17,
+                "close": 125.07,
+                "volume": 112117471,
+            }
+        ]
 
         # Act: Call with minimal parameters (no dates)
         _ = fetch_price_data(symbol="MSFT")
@@ -146,18 +143,17 @@ def test_1_2_unit_008_capital_adjustment() -> None:
     """
     # Arrange: Mock execute_norgate_code
     with patch("momo.data.bridge.execute_norgate_code") as mock_execute:
-        mock_execute.return_value = {
-            "data": [
-                {
-                    "date": "2023-01-03",
-                    "open": 125.07,
-                    "high": 125.27,
-                    "low": 124.17,
-                    "close": 125.07,
-                    "volume": 112117471,
-                }
-            ]
-        }
+        # Return mock DataFrame data (list of dicts, as returned by lambda expression)
+        mock_execute.return_value = [
+            {
+                "date": "2023-01-03",
+                "open": 125.07,
+                "high": 125.27,
+                "low": 124.17,
+                "close": 125.07,
+                "volume": 112117471,
+            }
+        ]
 
         # Act: Call with CAPITAL adjustment
         _ = fetch_price_data(symbol="AAPL", adjustment="CAPITAL")

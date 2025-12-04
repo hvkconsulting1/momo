@@ -53,17 +53,17 @@ def test_1_2_unit_011() -> None:
         # Verify execute_norgate_code was called
         assert mock_execute.called, "execute_norgate_code should be called"
 
-        # Verify correct code was executed (NDU version check)
+        # Verify correct code was executed (NDU databases check)
         call_args = mock_execute.call_args
         code_param = call_args[0][0]
-        assert "norgatedata.database_functions.version()" in code_param, (
-            f"Should call norgatedata.database_functions.version()\n" f"Actual code: {code_param}"
+        assert "norgatedata.databases()" in code_param, (
+            f"Should call norgatedata.databases()\n" f"Actual code: {code_param}"
         )
 
     # Steps 4-6: NDU running scenario
     with patch("momo.data.bridge.execute_norgate_code") as mock_execute:
-        # Step 4: Mock to succeed
-        mock_execute.return_value = "1.0.74"
+        # Step 4: Mock to succeed (return list of databases)
+        mock_execute.return_value = ["US EOD"]
 
         # Step 5: Call check_ndu_status
         result = check_ndu_status()
@@ -83,7 +83,7 @@ def test_1_2_unit_011_timeout_custom() -> None:
     """
     # Arrange: Mock execute_norgate_code
     with patch("momo.data.bridge.execute_norgate_code") as mock_execute:
-        mock_execute.return_value = "1.0.74"
+        mock_execute.return_value = ["US EOD"]
 
         # Act: Call with custom timeout
         result = check_ndu_status(timeout=5)
@@ -125,7 +125,7 @@ def test_1_2_unit_011_default_timeout() -> None:
     """
     # Arrange: Mock execute_norgate_code
     with patch("momo.data.bridge.execute_norgate_code") as mock_execute:
-        mock_execute.return_value = "1.0.74"
+        mock_execute.return_value = ["US EOD"]
 
         # Act: Call without timeout parameter
         result = check_ndu_status()
