@@ -179,8 +179,13 @@ def fetch_price_data(
         adjustment=adjustment,
     )
 
-    # Construct norgatedata API call
-    code_parts = [f'norgatedata.price_timeseries("{symbol}"']
+    # Construct norgatedata API call that returns DataFrame and serializes it
+    # Use a function to encapsulate the logic and return the final result
+    code_parts = [
+        "(lambda: (",
+        "norgatedata.price_timeseries(",
+        f'"{symbol}"',
+    ]
 
     if start_date:
         code_parts.append(f', start_date="{start_date.isoformat()}"')
@@ -193,31 +198,47 @@ def fetch_price_data(
     )
     code_parts.append(")")
 
+    # Chain DataFrame operations to serialize for JSON transfer
+    # Convert dates to ISO format strings for JSON compatibility
+    code_parts.append(".reset_index()")
+    code_parts.append(".assign(Date=lambda x: x['Date'].astype(str))")
+    code_parts.append(".to_dict('records')")
+    code_parts.append("))()")
+
     code = "".join(code_parts)
 
     # Execute via bridge
     result = execute_norgate_code(code, timeout=timeout)
 
     # Parse result into DataFrame
-    # norgatedata returns a serialized DataFrame representation
+    # Result is a list of dicts from df.to_dict('records')
     try:
         # Convert to DataFrame
-        if isinstance(result, dict) and "data" in result:
-            prices_df = pd.DataFrame(result["data"])
-        elif isinstance(result, list):
-            prices_df = pd.DataFrame(result)
-        else:
-            raise ValueError(f"Unexpected result format: {type(result)}")
+        if not isinstance(result, list):
+            raise ValueError(f"Expected list of records, got {type(result)}")
 
-        # Add symbol column if not present
-        if "symbol" not in prices_df.columns:
-            prices_df["symbol"] = symbol
+        prices_df = pd.DataFrame(result)
 
-        # Validate schema
+        # Normalize column names to lowercase
+        prices_df.columns = prices_df.columns.str.lower()
+
+        # Rename norgatedata columns to match our schema
+        column_mapping = {
+            "date": "date",
+            "open": "open",
+            "high": "high",
+            "low": "low",
+            "close": "close",
+            "volume": "volume",
+        }
+        prices_df = prices_df.rename(columns=column_mapping)
+
+        # Add symbol column
+        prices_df["symbol"] = symbol
+
+        # Select and reorder columns
         required_columns = ["date", "symbol", "open", "high", "low", "close", "volume"]
-        missing_columns = set(required_columns) - set(prices_df.columns)
-        if missing_columns:
-            raise ValueError(f"Missing required columns: {missing_columns}")
+        prices_df = prices_df[required_columns]
 
         # Convert types
         prices_df["date"] = pd.to_datetime(prices_df["date"])
@@ -229,14 +250,15 @@ def fetch_price_data(
 
         # Set date as index
         prices_df.set_index("date", inplace=True)
+        prices_df.index.name = "date"
 
         logger.info("price_data_fetched", symbol=symbol, rows=len(prices_df))
         return prices_df
 
     except (KeyError, ValueError, TypeError) as e:
-        logger.error("price_data_parse_failed", error=str(e), result=result)
+        logger.error("price_data_parse_failed", error=str(e), result_type=type(result))
         raise NorgateBridgeError(
-            f"Failed to parse price data from bridge: {e}\nResult: {result}"
+            f"Failed to parse price data from bridge: {e}"
         ) from e
 
 
@@ -261,8 +283,8 @@ def check_ndu_status(timeout: int = 10) -> bool:
     logger.info("checking_ndu_status")
 
     try:
-        # Try a simple norgatedata call
-        execute_norgate_code("norgatedata.database_functions.version()", timeout=timeout)
+        # Try a simple norgatedata call that requires NDU
+        execute_norgate_code("norgatedata.databases()", timeout=timeout)
         logger.info("ndu_status_check", available=True)
         return True
     except NDUNotRunningError:
