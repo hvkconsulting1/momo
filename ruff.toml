@@ -19,3 +19,7 @@ select = [
 
 [lint.isort]
 known-first-party = ["momo"]
+
+[lint.per-file-ignores]
+# Ignore line length in test files (docstrings with long URLs)
+"tests/**/*.py" = ["E501"]
