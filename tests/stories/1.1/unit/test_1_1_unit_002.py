@@ -13,7 +13,6 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:296
 """
 
 
-
 def test_1_1_unit_002(data_dir):
     """
     1.1-UNIT-002: Verify data/ subdirectories exist

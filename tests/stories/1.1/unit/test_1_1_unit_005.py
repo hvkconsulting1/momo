@@ -13,7 +13,6 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:455
 """
 
 
-
 def test_1_1_unit_005(src_dir):
     """
     1.1-UNIT-005: Verify py.typed marker file exists

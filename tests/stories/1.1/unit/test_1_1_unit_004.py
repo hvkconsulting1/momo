@@ -13,7 +13,6 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:402
 """
 
 
-
 def test_1_1_unit_004(src_dir):
     """
     1.1-UNIT-004: Verify all __init__.py files exist

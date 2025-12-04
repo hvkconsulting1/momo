@@ -13,7 +13,6 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:345
 """
 
 
-
 def test_1_1_unit_003(src_dir):
     """
     1.1-UNIT-003: Verify src/momo/ package structure exists
