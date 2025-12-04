@@ -18,6 +18,8 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.p0
+@pytest.mark.integration
 def test_1_1_int_007(project_root: Path) -> None:
     """
     1.1-INT-007: Verify 'import momo' succeeds from project root

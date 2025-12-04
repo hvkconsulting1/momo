@@ -24,6 +24,8 @@ from momo.utils.exceptions import WindowsPythonNotFoundError
 logger = structlog.get_logger()
 
 
+@pytest.mark.p1
+@pytest.mark.integration
 def test_1_2_int_004() -> None:
     """
     1.2-INT-004: Verify bridge handles concurrent requests without deadlocks

@@ -14,9 +14,12 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:959
 
 from pathlib import Path
 
+import pytest
 import tomli
 
 
+@pytest.mark.p1
+@pytest.mark.integration
 def test_1_1_int_004(project_root: Path) -> None:
     """
     1.1-INT-004: Verify pyproject.toml specifies all required dependencies

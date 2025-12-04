@@ -15,9 +15,13 @@ Test Design Reference: docs/qa/assessments/1.2-test-design-20251204.md#12-unit-0
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from momo.data.bridge import execute_norgate_code
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_004() -> None:
     """Test ID: 1.2-UNIT-004
 

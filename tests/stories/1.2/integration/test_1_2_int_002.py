@@ -21,6 +21,8 @@ from momo.utils.exceptions import NorgateBridgeError, WindowsPythonNotFoundError
 logger = structlog.get_logger()
 
 
+@pytest.mark.p1
+@pytest.mark.integration
 def test_1_2_int_002() -> None:
     """
     1.2-INT-002: Verify norgatedata version matches requirements

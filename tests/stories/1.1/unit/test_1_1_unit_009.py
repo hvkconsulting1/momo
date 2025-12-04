@@ -15,7 +15,11 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:82
 import re
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_1_unit_009(project_root: Path) -> None:
     """
     1.1-UNIT-009: Verify .gitignore excludes .env files

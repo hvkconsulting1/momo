@@ -14,10 +14,14 @@ Test Design Reference: docs/qa/assessments/1.2-test-design-20251204.md#1.2-unit-
 
 from unittest.mock import patch
 
+import pytest
+
 from momo.data.bridge import check_ndu_status
 from momo.utils.exceptions import NDUNotRunningError
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_011() -> None:
     """Test ID: 1.2-UNIT-011
 
@@ -74,6 +78,8 @@ def test_1_2_unit_011() -> None:
         ), f"check_ndu_status() should return True when NDU running, got {result}"
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_011_timeout_custom() -> None:
     """Test ID: 1.2-UNIT-011 (variant: custom timeout)
 
@@ -96,6 +102,8 @@ def test_1_2_unit_011_timeout_custom() -> None:
         ), f"Timeout should be 5 seconds, got {call_args[1].get('timeout')}"
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_011_generic_exception() -> None:
     """Test ID: 1.2-UNIT-011 (variant: generic exception)
 
@@ -116,6 +124,8 @@ def test_1_2_unit_011_generic_exception() -> None:
         ), f"check_ndu_status() should return False for generic exceptions, got {result}"
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_011_default_timeout() -> None:
     """Test ID: 1.2-UNIT-011 (variant: default timeout)
 

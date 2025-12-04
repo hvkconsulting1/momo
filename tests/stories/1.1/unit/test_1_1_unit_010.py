@@ -14,7 +14,11 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:143
 
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.p2
+@pytest.mark.unit
 def test_1_1_unit_010(project_root: Path) -> None:
     """
     1.1-UNIT-010: Verify README.md exists in project root

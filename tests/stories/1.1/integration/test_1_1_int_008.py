@@ -18,6 +18,8 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.p1
+@pytest.mark.integration
 def test_1_1_int_008(project_root: Path) -> None:
     """
     1.1-INT-008: Verify subpackages are importable

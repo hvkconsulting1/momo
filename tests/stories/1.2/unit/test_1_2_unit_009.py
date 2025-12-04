@@ -21,6 +21,8 @@ import pytest
 from momo.data.bridge import fetch_price_data
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_009() -> None:
     """Test ID: 1.2-UNIT-009
 
@@ -110,6 +112,8 @@ def test_1_2_unit_009() -> None:
         )
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_009_list_format() -> None:
     """Test ID: 1.2-UNIT-009 (variant: list format)
 
@@ -139,6 +143,8 @@ def test_1_2_unit_009_list_format() -> None:
         assert result_df.index.name == "date"
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_009_missing_columns() -> None:
     """Test ID: 1.2-UNIT-009 (variant: missing columns error)
 
@@ -171,6 +177,8 @@ def test_1_2_unit_009_missing_columns() -> None:
         )
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_009_invalid_format() -> None:
     """Test ID: 1.2-UNIT-009 (variant: invalid format error)
 

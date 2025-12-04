@@ -24,10 +24,16 @@ uv run pytest tests/stories/1.1/ -v
 uv run pytest tests/stories/1.1/unit/test_1_1_unit_001.py -v
 
 # Run by priority marker
-uv run pytest -m p0 -v
+uv run pytest -m p0 -v       # Critical path tests only
+uv run pytest -m p1 -v       # High priority tests
+uv run pytest -m p2 -v       # Lower priority tests
 
-# Run by test level
-uv run pytest tests/stories/*/integration/ -v
+# Run by test level marker
+uv run pytest -m unit -v          # Fast unit tests
+uv run pytest -m integration -v   # Integration tests
+
+# Combine markers
+uv run pytest -m "p0 and unit" -v
 ```
 
 ### Type Checking
@@ -121,6 +127,28 @@ tests/stories/{story-id}/{level}/test_{story}_{level}_{seq}.py
 - Story lifecycle matches test lifecycle
 - Perfect traceability from test design to implementation
 
+**Pytest Markers (REQUIRED):**
+
+All test functions MUST have both markers:
+1. **Priority marker:** `@pytest.mark.p0`, `@pytest.mark.p1`, or `@pytest.mark.p2`
+2. **Level marker:** `@pytest.mark.unit` or `@pytest.mark.integration`
+
+Example:
+```python
+import pytest
+
+@pytest.mark.p0
+@pytest.mark.unit
+def test_1_2_unit_001() -> None:
+    """Test critical functionality."""
+    ...
+```
+
+**Priority Guidelines:**
+- **P0:** Critical path - must pass before merge (core functionality, high-risk areas)
+- **P1:** High priority - important but not blocking (edge cases, common scenarios)
+- **P2:** Lower priority - nice to have (documentation tests, minor features)
+
 **Fixture Hierarchy:**
 1. Global fixtures: `tests/conftest.py`
 2. Story fixtures: `tests/stories/{story}/conftest.py`
@@ -165,7 +193,10 @@ When implementing tests:
 1. Test ID from test design maps directly to file path (deterministic mapping)
 2. Create one test per file following naming convention
 3. Use story-level conftest.py for shared fixtures
-4. Mark tests with appropriate pytest markers (p0, p1, unit, integration, etc.)
+4. **REQUIRED:** Add both priority and level markers to ALL test functions:
+   - Priority: `@pytest.mark.p0`, `@pytest.mark.p1`, or `@pytest.mark.p2`
+   - Level: `@pytest.mark.unit` or `@pytest.mark.integration`
+   - Both markers must be present on every test function
 
 ## Type Checking & Code Quality
 
@@ -190,3 +221,4 @@ When implementing tests:
 3. **Don't mix test IDs in one file** - Each file should contain only test functions for a single test ID
 4. **Don't skip type annotations** - Strict mypy mode is enforced
 5. **Don't create cross-layer dependencies** - Respect unidirectional data flow
+6. **Don't forget pytest markers** - ALL tests must have both `@pytest.mark.p[012]` and `@pytest.mark.[unit|integration]` markers

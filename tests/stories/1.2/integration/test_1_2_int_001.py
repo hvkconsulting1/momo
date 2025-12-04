@@ -17,6 +17,8 @@ import pytest
 from momo.data.bridge import execute_norgate_code
 
 
+@pytest.mark.p0
+@pytest.mark.integration
 def test_1_2_int_001() -> None:
     """1.2-INT-001: Verify norgatedata package is importable via bridge
 

@@ -14,7 +14,11 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:455
 
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.p1
+@pytest.mark.unit
 def test_1_1_unit_005(src_dir: Path) -> None:
     """
     1.1-UNIT-005: Verify py.typed marker file exists

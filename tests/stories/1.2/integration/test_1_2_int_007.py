@@ -23,6 +23,8 @@ from momo.utils.exceptions import NDUNotRunningError, NorgateBridgeError, Window
 logger = structlog.get_logger()
 
 
+@pytest.mark.p2
+@pytest.mark.integration
 def test_1_2_int_007() -> None:
     """
     1.2-INT-007: Verify fetch_price_data() handles different adjustment types

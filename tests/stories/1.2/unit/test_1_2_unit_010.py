@@ -20,6 +20,8 @@ from momo.data.bridge import execute_norgate_code
 from momo.utils.exceptions import NDUNotRunningError
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_010() -> None:
     """1.2-UNIT-010: Verify execute_norgate_code() raises NDUNotRunningError with clear message
 

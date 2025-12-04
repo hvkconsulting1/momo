@@ -22,6 +22,8 @@ import pytest
 from momo.data.bridge import check_ndu_status, fetch_price_data
 
 
+@pytest.mark.p0
+@pytest.mark.integration
 def test_1_2_int_005() -> None:
     """
     1.2-INT-005: Verify fetch_price_data() retrieves AAPL data with NDU running

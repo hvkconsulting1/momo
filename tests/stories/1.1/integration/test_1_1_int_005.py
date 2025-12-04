@@ -12,7 +12,11 @@ Acceptance Criteria: AC4
 Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:1047
 """
 
+import pytest
 
+
+@pytest.mark.p1
+@pytest.mark.integration
 def test_1_1_int_005() -> None:
     """
     1.1-INT-005: Verify core dependencies are importable

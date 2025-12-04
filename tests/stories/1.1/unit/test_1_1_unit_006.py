@@ -14,7 +14,11 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:64
 
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_1_unit_006(project_root: Path) -> None:
     """
     1.1-UNIT-006: Verify .python-version file contains '3.13'

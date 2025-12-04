@@ -14,7 +14,11 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:144
 
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.p2
+@pytest.mark.integration
 def test_1_1_int_006(project_root: Path) -> None:
     """
     1.1-INT-006: Verify README contains required sections

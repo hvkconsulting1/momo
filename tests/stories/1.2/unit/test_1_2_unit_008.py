@@ -16,9 +16,13 @@ Test Design Reference: docs/qa/assessments/1.2-test-design-20251204.md#1.2-unit-
 from datetime import date
 from unittest.mock import patch
 
+import pytest
+
 from momo.data.bridge import fetch_price_data
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_008() -> None:
     """Test ID: 1.2-UNIT-008
 
@@ -97,6 +101,8 @@ def test_1_2_unit_008() -> None:
         assert len(result_df) == 1, "DataFrame should have 1 row"
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_008_defaults() -> None:
     """Test ID: 1.2-UNIT-008 (variant: default parameters)
 
@@ -134,6 +140,8 @@ def test_1_2_unit_008_defaults() -> None:
         )
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_008_capital_adjustment() -> None:
     """Test ID: 1.2-UNIT-008 (variant: CAPITAL adjustment)
 

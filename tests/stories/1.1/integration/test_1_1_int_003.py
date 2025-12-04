@@ -15,7 +15,11 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:894
 import subprocess
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.p1
+@pytest.mark.integration
 def test_1_1_int_003(project_root: Path, data_dir: Path) -> None:
     """
     1.1-INT-003: Verify data/ files are not tracked by git

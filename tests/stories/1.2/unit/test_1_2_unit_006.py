@@ -22,6 +22,8 @@ from momo.data.bridge import execute_norgate_code
 from momo.utils.exceptions import NorgateBridgeError
 
 
+@pytest.mark.p0
+@pytest.mark.unit
 def test_1_2_unit_006() -> None:
     """Test ID: 1.2-UNIT-006
 

@@ -14,7 +14,11 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:158
 
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.p1
+@pytest.mark.unit
 def test_1_1_unit_011(project_root: Path) -> None:
     """
     1.1-UNIT-011: Verify docs/research-log.md exists

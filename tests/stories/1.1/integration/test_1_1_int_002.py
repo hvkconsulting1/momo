@@ -15,7 +15,11 @@ Test Design Reference: docs/qa/assessments/1.1-test-design-20251203.md:843
 import subprocess
 import sys
 
+import pytest
 
+
+@pytest.mark.p0
+@pytest.mark.integration
 def test_1_1_int_002() -> None:
     """
     1.1-INT-002: Verify Python 3.13 is available and executable

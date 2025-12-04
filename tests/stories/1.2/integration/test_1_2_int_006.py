@@ -19,6 +19,8 @@ import pytest
 from momo.data.bridge import check_ndu_status, fetch_price_data
 
 
+@pytest.mark.p0
+@pytest.mark.integration
 def test_1_2_int_006() -> None:
     """
     1.2-INT-006: Verify retrieved data has expected schema (Date, OHLCV)

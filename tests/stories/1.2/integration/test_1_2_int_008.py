@@ -22,6 +22,8 @@ from momo.utils.exceptions import (
 )
 
 
+@pytest.mark.p0
+@pytest.mark.integration
 def test_1_2_int_008() -> None:
     """1.2-INT-008: Verify bridge error messages are actionable when NDU stopped
 

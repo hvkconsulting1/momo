@@ -14,9 +14,13 @@ Acceptance Criteria: AC2
 Test Design Reference: docs/qa/assessments/1.2-test-design-20251204.md:458
 """
 
+import pytest
+
 from momo.data.bridge import execute_norgate_code
 
 
+@pytest.mark.p0
+@pytest.mark.integration
 def test_1_2_int_003() -> None:
     """
     1.2-INT-003: Verify bridge successfully executes simple Python code via Windows
