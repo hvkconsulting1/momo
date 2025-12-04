@@ -32,7 +32,7 @@ def test_1_1_int_005() -> None:
     import matplotlib  # noqa: F401
 
     # Project-specific
-    import norgatedata  # noqa: F401
+    # norgatedata: Windows-only, accessed via bridge (not imported directly in WSL)
     import numpy
     import pandas  # type: ignore[import-untyped]
     import pyarrow  # type: ignore[import-untyped]  # noqa: F401

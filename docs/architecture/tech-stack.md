@@ -22,7 +22,7 @@ This section defines the **definitive technology choices** for the project. All 
 | **Data Processing** | pyarrow | 18.x | Parquet read/write | Required for pandas Parquet support; fast columnar storage |
 | **Statistics** | scipy | 1.14.x | Statistical functions | Performance metrics, distributions |
 | **Statistics** | statsmodels | 0.14.x | Time series analysis | Regression, statistical tests for validation |
-| **Data Source** | norgatedata | 1.0.74 | Norgate Data API | Required for market data access; Windows-only via bridge |
+| **Data Source** | norgatedata | 1.0.74 | Norgate Data API | Required for market data access; Windows-only (WSL accesses via subprocess bridge) |
 | **Visualization** | matplotlib | 3.9.x | Static charts, equity curves | Publication-quality figures; Jupyter integration |
 | **Visualization** | seaborn | 0.13.x | Statistical visualizations | Better defaults than matplotlib; heatmaps |
 | **Interactive** | jupyter | 4.x | Research notebooks | Primary research interface per PRD |

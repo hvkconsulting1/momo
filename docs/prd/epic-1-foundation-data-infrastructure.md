@@ -78,6 +78,8 @@ The spike results in **GO** only if ALL of the following are confirmed:
 ### Notes
 
 - This story requires a Windows environment with NDU running and active Norgate Platinum subscription
+- **For WSL development**: Use Windows Python bridge pattern (execute code via `python.exe` subprocess) - see Story 1.0 findings
+- **For Windows development**: Direct norgatedata package usage
 - Time-box: This spike should complete within 1 working day
 - If NO-GO: Document blockers and alternative data source options before proceeding
 
@@ -108,7 +110,7 @@ The spike results in **GO** only if ALL of the following are confirmed:
 
 ### Acceptance Criteria
 
-1. `norgatedata` Python package is installed and importable
+1. `norgatedata` Python package is installed in Windows Python and accessible via bridge (not required in WSL Python)
 2. Windows Python bridge module (`src/momo/data/bridge.py`) implements subprocess-based NDU communication following the pattern from Story 1.0 exploration
 3. Basic connection test successfully retrieves a sample ticker's price data via the bridge
 4. Error handling provides clear messages if NDU is not running or accessible

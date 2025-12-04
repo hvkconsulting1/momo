@@ -8,14 +8,22 @@ Systematically evaluate Norgate Data's Python API to determine if it can support
 ## Prerequisites
 
 ### Environment Setup
+
+**For Windows Python:**
 ```bash
 pip install norgatedata pandas numpy
 ```
+
+**For WSL development:**
+- Ensure Windows Python has norgatedata installed
+- Use Windows Python bridge pattern (execute code via `python.exe` subprocess)
+- See [Norgate API Exploration findings](norgate-api-exploration.md) for bridge implementation
 
 ### Requirements
 - Active Norgate Data subscription
 - Norgate Data Updater (NDU) running on Windows
 - Note: NDU is Windows-only; the Python package communicates with NDU
+- For WSL: Windows Python (`python.exe`) must be in PATH
 
 ---
 

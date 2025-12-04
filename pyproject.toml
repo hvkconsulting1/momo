@@ -15,6 +15,8 @@ dependencies = [
     "statsmodels>=0.14,<0.15",
 
     # Data source
+    # Note: norgatedata is Windows-only. On WSL, it's accessed via Windows Python bridge
+    # (not imported directly). On Windows, this package must be installed for the bridge.
     "norgatedata>=1.0.74",
 
     # Visualization

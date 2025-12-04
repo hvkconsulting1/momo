@@ -101,7 +101,7 @@ The MVP implementation replicates the classic academic momentum strategy with th
   - Point-in-time index constituents (eliminates look-ahead bias)
   - Delisting data (eliminates survivorship bias)
   - Adjusted prices for splits/dividends
-- **norgatedata Python package** - API access to Norgate data
+- **norgatedata Python package** - API access to Norgate data (Windows-only; accessed via Windows Python bridge from WSL)
 - **Data caching strategy:** Cache to local Parquet files by default for faster iteration and reproducible backtests
 - **Universe definition:**
   - **Default:** Russell 1000 Current & Past (~1000 large/mid-cap stocks)
@@ -116,7 +116,8 @@ The MVP implementation replicates the classic academic momentum strategy with th
 - **Testing framework:** pytest for all automated tests
 
 **Security & Configuration:**
-- **Norgate credentials:** Pre-configured in NDU Windows application; Python code accesses NDU via Windows Python bridge without handling credentials directly
+- **Norgate credentials:** Pre-configured in NDU Windows application; Python code accesses NDU via Windows Python bridge (`python.exe` subprocess) without handling credentials directly
+- **Windows Python bridge:** WSL development uses subprocess to execute norgatedata code in Windows Python environment
 - **Data directory:** .gitignore data/ folder to avoid committing large price datasets
 - **No PII/sensitive data:** Framework handles only public market data
 
