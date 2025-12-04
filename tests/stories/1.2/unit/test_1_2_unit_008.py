@@ -29,7 +29,7 @@ def test_1_2_unit_008() -> None:
     Steps:
     1. Mock execute_norgate_code() to capture code parameter
     2. Call fetch_price_data() with various parameters
-    3. Verify code includes norgatedata.price_data() with correct parameters
+    3. Verify code includes norgatedata.price_timeseries() with correct parameters
     4. Verify adjustment type passed correctly
     5. Verify date format correct (ISO 8601)
 
@@ -67,9 +67,9 @@ def test_1_2_unit_008() -> None:
         # Extract the code parameter (first positional argument)
         code_param = call_args[0][0]
 
-        # Step 3: Assert code includes norgatedata.price_data() with symbol
-        assert 'norgatedata.price_data("AAPL"' in code_param, (
-            f"Code should include norgatedata.price_data() call with symbol AAPL\n"
+        # Step 3: Assert code includes norgatedata.price_timeseries() with symbol
+        assert 'norgatedata.price_timeseries("AAPL"' in code_param, (
+            f"Code should include norgatedata.price_timeseries() call with symbol AAPL\n"
             f"Actual code: {code_param}"
         )
 
@@ -127,7 +127,7 @@ def test_1_2_unit_008_defaults() -> None:
         # Assert: Verify code doesn't include dates
         code_param = mock_execute.call_args[0][0]
 
-        assert 'norgatedata.price_data("MSFT"' in code_param, (
+        assert 'norgatedata.price_timeseries("MSFT"' in code_param, (
             f"Code should include symbol MSFT\n" f"Actual code: {code_param}"
         )
 

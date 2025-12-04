@@ -180,7 +180,7 @@ def fetch_price_data(
     )
 
     # Construct norgatedata API call
-    code_parts = [f'norgatedata.price_data("{symbol}"']
+    code_parts = [f'norgatedata.price_timeseries("{symbol}"']
 
     if start_date:
         code_parts.append(f', start_date="{start_date.isoformat()}"')
@@ -188,7 +188,9 @@ def fetch_price_data(
         code_parts.append(f', end_date="{end_date.isoformat()}"')
 
     code_parts.append(', timeseriesformat="pandas-dataframe"')
-    code_parts.append(f", priceadjust=norgatedata.StockPriceAdjustmentType.{adjustment}")
+    code_parts.append(
+        f", stock_price_adjustment_setting=norgatedata.StockPriceAdjustmentType.{adjustment}"
+    )
     code_parts.append(")")
 
     code = "".join(code_parts)

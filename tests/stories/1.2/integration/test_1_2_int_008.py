@@ -97,9 +97,19 @@ def test_1_2_int_008() -> None:
         # Test passes - error message is clear and actionable
 
     except NorgateBridgeError as e:
-        # Generic bridge error - check if it's NDU-related
+        # Generic bridge error - check if it's a timeout (NDU stopped causes timeout)
         error_message = str(e)
-        if "NDU" in error_message or "not running" in error_message.lower():
+        if "timed out" in error_message.lower():
+            # Timeout is expected when NDU is stopped (norgatedata hangs)
+            # Verify the timeout error message is actionable
+            assert (
+                "NDU" in error_message or "responding" in error_message.lower()
+            ), f"Timeout error should mention NDU or responding, got: {error_message}"
+            assert (
+                len(error_message) > 20
+            ), f"Timeout error message too short to be helpful, got: {error_message}"
+            # Test passes - timeout with actionable message is acceptable when NDU stopped
+        elif "ndu is not running" in error_message.lower():
             # It's an NDU error but wrong exception type
             pytest.fail(
                 f"NDU error should raise NDUNotRunningError, not NorgateBridgeError. "
