@@ -65,3 +65,26 @@ class WindowsPythonNotFoundError(BridgeError):
     """
 
     pass
+
+
+class DataError(Exception):
+    """Base exception for data layer errors.
+
+    Raised when errors occur during data operations such as fetching,
+    caching, validation, or transformation.
+    """
+
+    pass
+
+
+class CacheError(DataError):
+    """Cache operation errors.
+
+    Raised when errors occur during cache operations such as:
+    - Schema validation failures
+    - Invalid DataFrame structure (missing MultiIndex, empty DataFrame, etc.)
+    - Parquet I/O errors
+    - Cache path generation errors
+    """
+
+    pass
