@@ -21,12 +21,17 @@ Schema Requirements (from docs/architecture/data-models.md):
         * dividend: float64
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa  # type: ignore[import-untyped]
+import pyarrow.parquet as pq  # type: ignore[import-untyped]
+import structlog
 
 from momo.utils.exceptions import CacheError
+
+logger = structlog.get_logger()
 
 
 def get_cache_path(universe: str, start_date: date, end_date: date) -> Path:
@@ -136,11 +141,13 @@ def _validate_price_schema(df: pd.DataFrame) -> None:
 
 
 def save_prices(df: pd.DataFrame, universe: str, start_date: date, end_date: date) -> Path:
-    """Save price DataFrame to Parquet cache with validation.
+    """Save price DataFrame to Parquet cache with validation and metadata.
 
     This function validates the DataFrame schema and writes it to a Parquet file
     using the pyarrow engine with snappy compression. Cache directories are
-    created automatically if they don't exist.
+    created automatically if they don't exist. Metadata including universe,
+    date range, creation timestamp, and schema version is embedded in the
+    Parquet file for staleness detection and versioning.
 
     Args:
         df: Price data DataFrame to cache
@@ -159,6 +166,14 @@ def save_prices(df: pd.DataFrame, universe: str, start_date: date, end_date: dat
         DataFrame must have MultiIndex (date, symbol) and all required columns
         with correct dtypes.
 
+    Metadata:
+        The following metadata is stored in the Parquet file:
+        - momo:universe: Universe identifier
+        - momo:start_date: Start date in ISO format
+        - momo:end_date: End date in ISO format
+        - momo:created_at: UTC timestamp in ISO format
+        - momo:schema_version: Schema version (currently "1.0")
+
     Examples:
         >>> prices_df = load_from_api(symbols, start_date, end_date)
         >>> cache_path = save_prices(prices_df, "russell_1000_cp", start_date, end_date)
@@ -171,8 +186,31 @@ def save_prices(df: pd.DataFrame, universe: str, start_date: date, end_date: dat
     cache_path = get_cache_path(universe, start_date, end_date)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Prepare metadata for Parquet file
+    metadata = {
+        "momo:universe": universe,
+        "momo:start_date": start_date.isoformat(),
+        "momo:end_date": end_date.isoformat(),
+        "momo:created_at": datetime.now(UTC).isoformat(),
+        "momo:schema_version": "1.0",
+    }
+
+    # Convert DataFrame to PyArrow Table with custom metadata
+    table = pa.Table.from_pandas(df)
+
+    # Merge custom metadata with existing schema metadata
+    existing_metadata = table.schema.metadata or {}
+    encoded_metadata = {k.encode(): v.encode() for k, v in metadata.items()}
+    combined_metadata = {**existing_metadata, **encoded_metadata}
+
+    # Create new schema with updated metadata
+    schema_with_metadata = table.schema.with_metadata(combined_metadata)
+
+    # Replace table schema with metadata-enhanced schema
+    table = table.cast(schema_with_metadata)
+
     # Write to Parquet with pyarrow engine and snappy compression
-    df.to_parquet(cache_path, engine="pyarrow", compression="snappy")
+    pq.write_table(table, cache_path, compression="snappy")
 
     return cache_path
 
@@ -211,3 +249,49 @@ def load_prices(universe: str, start_date: date, end_date: date) -> pd.DataFrame
     df = pd.read_parquet(cache_path, engine="pyarrow")
 
     return df
+
+
+def invalidate(universe: str, start_date: date, end_date: date) -> None:
+    """Remove cache file for given universe and date range.
+
+    This function deletes the cached Parquet file if it exists. It is idempotent
+    and will not raise an error if the cache file doesn't exist (already removed
+    or never created).
+
+    Use this function to force cache refresh when:
+    - Data source has been updated with corrections
+    - Cache is suspected to be stale or corrupted
+    - Testing cache miss behavior
+
+    Args:
+        universe: Universe identifier (e.g., "russell_1000_cp")
+        start_date: Start date of price data range
+        end_date: End date of price data range
+
+    Examples:
+        >>> # Remove stale cache
+        >>> invalidate("russell_1000_cp", date(2010, 1, 1), date(2020, 12, 31))
+        >>> # Next load_prices() will return None, triggering fresh fetch
+        >>> prices_df = load_prices("russell_1000_cp", date(2010, 1, 1), date(2020, 12, 31))
+        >>> assert prices_df is None  # Cache miss
+    """
+    cache_path = get_cache_path(universe, start_date, end_date)
+
+    # Delete cache file if it exists (idempotent - no error if missing)
+    if cache_path.exists():
+        cache_path.unlink()
+        logger.info(
+            "cache_invalidated",
+            universe=universe,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+            path=str(cache_path),
+        )
+    else:
+        logger.debug(
+            "cache_invalidation_skipped",
+            universe=universe,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+            reason="file_not_found",
+        )
