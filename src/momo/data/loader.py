@@ -12,6 +12,7 @@ See docs/architecture/components.md for detailed component specification.
 """
 
 from datetime import date
+from time import perf_counter
 
 import pandas as pd
 import structlog
@@ -118,15 +119,26 @@ def load_universe(
         )
 
     # Step 2: Fetch from bridge
+    # Log start of fetch operation
+    start_time = perf_counter()
+    logger.info(
+        "fetching_universe",
+        symbols_count=len(symbols),
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+        universe=universe,
+    )
 
     # Step 3: Fetch data for each symbol sequentially
     # Note: Batch optimization deferred to future story
     symbol_dfs: list[pd.DataFrame] = []
 
-    for symbol in symbols:
+    for i, symbol in enumerate(symbols, start=1):
         logger.info(
             "fetching_symbol",
             symbol=symbol,
+            index=i,
+            total=len(symbols),
             start_date=start_date.isoformat(),
             end_date=end_date.isoformat(),
         )
@@ -155,11 +167,14 @@ def load_universe(
         end_date=end_date,
     )
 
+    # Log completion with duration
+    elapsed = perf_counter() - start_time
     logger.info(
-        "universe_loaded",
+        "universe_fetched",
         universe=universe,
         symbols_count=len(symbols),
         rows=len(combined_df),
+        duration=elapsed,
     )
 
     return combined_df
