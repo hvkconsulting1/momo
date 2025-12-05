@@ -98,15 +98,26 @@ def load_universe(
                 symbols_count=len(symbols),
             )
             return cached_df
+        # Cache miss - log and proceed to fetch
+        logger.info(
+            "cache_miss",
+            universe=universe,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+            symbols_count=len(symbols),
+        )
+    else:
+        # Force refresh - log and proceed to fetch
+        logger.info(
+            "cache_refresh",
+            universe=universe,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+            symbols_count=len(symbols),
+            reason="force_refresh",
+        )
 
-    # Step 2: Cache miss - fetch from bridge
-    logger.info(
-        "cache_miss",
-        universe=universe,
-        start_date=start_date.isoformat(),
-        end_date=end_date.isoformat(),
-        symbols_count=len(symbols),
-    )
+    # Step 2: Fetch from bridge
 
     # Step 3: Fetch data for each symbol sequentially
     # Note: Batch optimization deferred to future story
@@ -125,6 +136,7 @@ def load_universe(
             start_date=start_date,
             end_date=end_date,
             adjustment="TOTALRETURN",
+            timeout=30,
         )
         symbol_dfs.append(symbol_df)
 
