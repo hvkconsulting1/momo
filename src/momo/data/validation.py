@@ -33,7 +33,7 @@ from datetime import timedelta
 import pandas as pd
 import structlog
 
-from momo.data.bridge import fetch_index_constituent_timeseries
+from momo.data.bridge import fetch_index_constituent_timeseries, fetch_watchlist_symbols
 from momo.utils.exceptions import NorgateBridgeError
 
 logger = structlog.get_logger()
@@ -298,7 +298,7 @@ def get_index_constituents_at_date(
     Args:
         index_name: Name of index (e.g., "Russell 3000 Current & Past", "Russell 1000")
         target_date: Date to check membership (datetime.date object)
-        symbols: Optional list of symbols to check (if None, checks all from watchlist)
+        symbols: Optional list of symbols to check (if None, retrieves all from watchlist)
         timeout: Bridge timeout in seconds (default: 300s for full universe)
 
     Returns:
@@ -311,20 +311,27 @@ def get_index_constituents_at_date(
 
     Example:
         >>> from datetime import date
-        >>> # Get Russell 1000 constituents as of Jan 1, 2010
+        >>> # Get ALL Russell 1000 constituents as of Jan 1, 2010
         >>> constituents = get_index_constituents_at_date(
+        ...     "Russell 1000 Current & Past",
+        ...     date(2010, 1, 1)
+        ... )
+        >>> print(len(constituents))  # ~1000
+        >>>
+        >>> # Or filter specific symbols for membership
+        >>> filtered = get_index_constituents_at_date(
         ...     "Russell 1000 Current & Past",
         ...     date(2010, 1, 1),
         ...     symbols=["AAPL", "MSFT", "XYZ"]
         ... )
-        >>> print(constituents)
+        >>> print(filtered)
         ['AAPL', 'MSFT']  # XYZ was not in index
 
     Note:
         - Use "Current & Past" index names to include delisted securities
         - Uses narrow date window (±5 days) to minimize bridge data transfer
         - Invalid symbols are skipped with warning (not raised as errors)
-        - Performance: ~7ms per symbol check via bridge
+        - Performance: ~7ms per symbol check via bridge (~7s for 1000 symbols)
     """
     logger.info(
         "Getting index constituents at date",
@@ -335,11 +342,20 @@ def get_index_constituents_at_date(
         symbol_count=len(symbols) if symbols else "all",
     )
 
+    # If no symbols provided, get all symbols from the watchlist
     if symbols is None:
-        # Future enhancement: Get all symbols from watchlist
-        raise NotImplementedError(
-            "Retrieving all index constituents without providing symbols list "
-            "is not yet implemented. Please provide a symbols list to check."
+        logger.info(
+            "Fetching all symbols from watchlist",
+            layer="data",
+            operation="get_index_constituents_at_date",
+            index_name=index_name,
+        )
+        symbols = fetch_watchlist_symbols(watchlist_name=index_name, timeout=timeout)
+        logger.info(
+            "Watchlist symbols retrieved",
+            layer="data",
+            operation="get_index_constituents_at_date",
+            symbol_count=len(symbols),
         )
 
     constituents: list[str] = []
@@ -358,6 +374,18 @@ def get_index_constituents_at_date(
                 end_date=end_date,
                 timeout=timeout,
             )
+
+            # Skip symbols with no constituent data (empty DataFrame)
+            if timeseries.empty:
+                logger.warning(
+                    "No constituent data for symbol, skipping",
+                    layer="data",
+                    operation="get_index_constituents_at_date",
+                    symbol=symbol,
+                    index_name=index_name,
+                    target_date=target_date,
+                )
+                continue
 
             # Check if symbol was member on target_date
             # Use nearest date if target_date is not a trading day

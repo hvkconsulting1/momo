@@ -369,6 +369,20 @@ def fetch_index_constituent_timeseries(
 
         df = pd.DataFrame(result)
 
+        # Handle empty result (no constituent data available for symbol/date range)
+        if df.empty:
+            # Return empty DataFrame with expected schema
+            empty_df = pd.DataFrame(
+                {"index_constituent": []}, index=pd.DatetimeIndex([], name="date")
+            )
+            empty_df["index_constituent"] = empty_df["index_constituent"].astype("int64")
+            logger.warning(
+                "index_constituent_timeseries_empty",
+                symbol=symbol,
+                index_name=index_name,
+            )
+            return empty_df
+
         # Normalize column names to lowercase
         df.columns = df.columns.str.lower()
 
@@ -404,6 +418,58 @@ def fetch_index_constituent_timeseries(
         raise NorgateBridgeError(
             f"Failed to parse index constituent timeseries from bridge: {e}"
         ) from e
+
+
+def fetch_watchlist_symbols(watchlist_name: str, timeout: int = 30) -> list[str]:
+    """Fetch all symbols in a Norgate watchlist via Windows Python bridge.
+
+    Retrieves the complete list of ticker symbols in a specified Norgate watchlist.
+    This is used to get all constituents of an index when performing point-in-time
+    constituent validation.
+
+    Args:
+        watchlist_name: Name of Norgate watchlist (e.g., "Russell 1000 Current & Past",
+            "S&P 500", "Russell 3000")
+        timeout: Subprocess timeout in seconds (default: 30)
+
+    Returns:
+        list[str]: List of all ticker symbols in the watchlist
+
+    Raises:
+        WindowsPythonNotFoundError: python.exe not found in PATH
+        NDUNotRunningError: Norgate Data Updater is not running
+        NorgateBridgeError: Bridge communication or data parsing errors
+        ValueError: Invalid watchlist name (watchlist not found)
+
+    Example:
+        >>> symbols = fetch_watchlist_symbols("Russell 1000 Current & Past")
+        >>> print(len(symbols))  # ~1000
+        >>> print(symbols[:5])  # ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']
+    """
+    logger.info("fetching_watchlist_symbols", watchlist_name=watchlist_name)
+
+    # Construct norgatedata API call to get all symbols in watchlist
+    code = f'norgatedata.watchlist_symbols("{watchlist_name}")'
+
+    # Execute via bridge
+    result = execute_norgate_code(code, timeout=timeout)
+
+    # Parse result
+    try:
+        if not isinstance(result, list):
+            raise ValueError(f"Expected list of symbols, got {type(result)}")
+
+        # Filter out empty strings or None values
+        symbols = [str(symbol) for symbol in result if symbol]
+
+        logger.info(
+            "watchlist_symbols_fetched", watchlist_name=watchlist_name, symbol_count=len(symbols)
+        )
+        return symbols
+
+    except (ValueError, TypeError) as e:
+        logger.error("watchlist_symbols_parse_failed", error=str(e), result_type=type(result))
+        raise NorgateBridgeError(f"Failed to parse watchlist symbols from bridge: {e}") from e
 
 
 def check_ndu_status(timeout: int = 10) -> bool:
