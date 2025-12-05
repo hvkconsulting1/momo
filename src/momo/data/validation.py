@@ -35,6 +35,69 @@ import structlog
 logger = structlog.get_logger()
 
 
+def _check_missing_values(prices_df: pd.DataFrame) -> dict[str, int]:
+    """Detect missing values (NaN) in critical OHLC price columns.
+
+    Scans the DataFrame for NaN values in open, high, low, and close columns,
+    aggregating counts per ticker symbol.
+
+    Args:
+        prices_df: Price data with MultiIndex (date, symbol) and OHLC columns
+
+    Returns:
+        dict[str, int]: Mapping of ticker symbol -> total NaN count across OHLC columns.
+            Only includes tickers with at least one NaN value.
+
+    DataFrame Schema (Input):
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns (checked for NaN):
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+
+    Note:
+        This function preserves input DataFrame immutability by using df.copy().
+    """
+    df = prices_df.copy()  # Preserve input immutability (ADR-004)
+
+    result: dict[str, int] = {}
+
+    # Get unique symbols from MultiIndex
+    if isinstance(df.index, pd.MultiIndex):
+        symbols = df.index.get_level_values("symbol").unique().tolist()
+    else:
+        return result  # Empty result for non-MultiIndex
+
+    # Check each ticker for NaN values in OHLC columns
+    for ticker in symbols:
+        # Extract data for this ticker using MultiIndex slicing
+        ticker_data = df.loc[(slice(None), ticker), :]
+
+        # Count NaN values across all critical OHLC columns
+        nan_count = (
+            ticker_data["open"].isna().sum()
+            + ticker_data["high"].isna().sum()
+            + ticker_data["low"].isna().sum()
+            + ticker_data["close"].isna().sum()
+        )
+
+        # Only include tickers with at least one NaN
+        if nan_count > 0:
+            result[ticker] = nan_count
+            logger.warning(
+                "Missing data detected",
+                layer="data",
+                operation="_check_missing_values",
+                ticker=ticker,
+                nan_count=nan_count,
+            )
+
+    return result
+
+
 @dataclass
 class ValidationReport:
     """Data quality validation report with comprehensive issue summary.
@@ -111,24 +174,38 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
 
     total_tickers = len(symbols)
 
-    # Skeleton implementation - no validation logic yet
+    # Perform validation checks
+    # Check for missing values (NaN) in OHLC columns
+    missing_data_counts = _check_missing_values(prices_df)
+
     # Future commits will implement:
-    # - _check_missing_values() for NaN detection
     # - _check_date_gaps() for gap identification
     # - _check_adjustment_consistency() for adjustment validation
     # - check_delisting_status() for delisting detection
 
+    # Determine validation status
+    is_valid = len(missing_data_counts) == 0
+
+    # Generate summary message
+    if missing_data_counts:
+        ticker_count = len(missing_data_counts)
+        total_nans = sum(missing_data_counts.values())
+        summary_message = (
+            f"Validation found issues: {ticker_count} ticker(s) with "
+            f"{total_nans} missing value(s)"
+        )
+    else:
+        summary_message = f"Validation complete: {total_tickers} tickers, no issues detected"
+
     report = ValidationReport(
         total_tickers=total_tickers,
         date_range=(start_date, end_date),
-        missing_data_counts={},  # No validation yet
-        date_gaps={},  # No validation yet
-        adjustment_issues=[],  # No validation yet
-        delisting_events={},  # No validation yet
-        summary_message=(
-            f"Validation complete: {total_tickers} tickers, no issues detected (skeleton)"
-        ),
-        is_valid=True,  # Optimistic - no validation performed yet
+        missing_data_counts=missing_data_counts,
+        date_gaps={},  # Future commits
+        adjustment_issues=[],  # Future commits
+        delisting_events={},  # Future commits
+        summary_message=summary_message,
+        is_valid=is_valid,
     )
 
     logger.info(
