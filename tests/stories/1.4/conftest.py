@@ -397,6 +397,27 @@ def sample_price_df_with_50pct_jump_no_div(sample_price_df_clean: pd.DataFrame) 
 
 
 @pytest.fixture
+def mock_bridge_response_russell1000() -> list[str]:
+    """Mock bridge response with ~1000 ticker symbols.
+
+    Returns list of strings representing Russell 1000 index constituents.
+    Used for mocking bridge calls in unit tests.
+
+    Returns:
+        list[str]: Approximately 1000 ticker symbols
+    """
+    # Generate approximately 1000 ticker symbols
+    # Use realistic ticker patterns: 1-4 letter symbols
+    tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "BRK.B"]
+
+    # Add more tickers to reach ~1000 total
+    for i in range(1, 993):
+        tickers.append(f"TICK{i:04d}")
+
+    return tickers
+
+
+@pytest.fixture
 def sample_price_df_with_aapl_split() -> pd.DataFrame:
     """Historical Apple data with 7:1 stock split on June 9, 2014.
 

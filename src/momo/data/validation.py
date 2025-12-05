@@ -28,9 +28,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date as date_type
+from datetime import timedelta
 
 import pandas as pd
 import structlog
+
+from momo.data.bridge import fetch_index_constituent_timeseries
+from momo.utils.exceptions import NorgateBridgeError
 
 logger = structlog.get_logger()
 
@@ -276,6 +280,163 @@ def _check_adjustment_consistency(
             )
 
     return result
+
+
+def get_index_constituents_at_date(
+    index_name: str,
+    target_date: date_type,
+    symbols: list[str] | None = None,
+    timeout: int = 300,
+) -> list[str]:
+    """Get list of symbols that were index members at a specific date.
+
+    Retrieves point-in-time index constituent information by querying the
+    Norgate API via the Windows Python bridge. This function is used to
+    filter universes based on historical index membership to avoid
+    survivorship bias in backtests.
+
+    Args:
+        index_name: Name of index (e.g., "Russell 3000 Current & Past", "Russell 1000")
+        target_date: Date to check membership (datetime.date object)
+        symbols: Optional list of symbols to check (if None, checks all from watchlist)
+        timeout: Bridge timeout in seconds (default: 300s for full universe)
+
+    Returns:
+        list[str]: List of ticker symbols that were index members at target_date.
+            Returns empty list if no constituents found or all symbols fail.
+
+    Raises:
+        ValueError: Invalid index name (index not found in Norgate database)
+        NorgateBridgeError: Bridge communication errors or timeouts
+
+    Example:
+        >>> from datetime import date
+        >>> # Get Russell 1000 constituents as of Jan 1, 2010
+        >>> constituents = get_index_constituents_at_date(
+        ...     "Russell 1000 Current & Past",
+        ...     date(2010, 1, 1),
+        ...     symbols=["AAPL", "MSFT", "XYZ"]
+        ... )
+        >>> print(constituents)
+        ['AAPL', 'MSFT']  # XYZ was not in index
+
+    Note:
+        - Use "Current & Past" index names to include delisted securities
+        - Uses narrow date window (±5 days) to minimize bridge data transfer
+        - Invalid symbols are skipped with warning (not raised as errors)
+        - Performance: ~7ms per symbol check via bridge
+    """
+    logger.info(
+        "Getting index constituents at date",
+        layer="data",
+        operation="get_index_constituents_at_date",
+        index_name=index_name,
+        target_date=target_date,
+        symbol_count=len(symbols) if symbols else "all",
+    )
+
+    if symbols is None:
+        # Future enhancement: Get all symbols from watchlist
+        raise NotImplementedError(
+            "Retrieving all index constituents without providing symbols list "
+            "is not yet implemented. Please provide a symbols list to check."
+        )
+
+    constituents: list[str] = []
+
+    # Use narrow date window (±5 days) to minimize data transfer
+    start_date = target_date - timedelta(days=5)
+    end_date = target_date + timedelta(days=5)
+
+    for symbol in symbols:
+        try:
+            # Fetch constituent timeseries for narrow date range
+            timeseries = fetch_index_constituent_timeseries(
+                symbol=symbol,
+                index_name=index_name,
+                start_date=start_date,
+                end_date=end_date,
+                timeout=timeout,
+            )
+
+            # Check if symbol was member on target_date
+            # Use nearest date if target_date is not a trading day
+            target_timestamp = pd.Timestamp(target_date)
+
+            if target_timestamp in timeseries.index:
+                # Exact date found
+                is_member = bool(timeseries.loc[target_timestamp, "index_constituent"])
+            else:
+                # Find nearest trading day (use ffill to get nearest prior date)
+                nearest_date = timeseries.index[timeseries.index <= target_timestamp]
+                if len(nearest_date) > 0:
+                    is_member = bool(timeseries.loc[nearest_date[-1], "index_constituent"])
+                else:
+                    # No date before target_date, check first available date
+                    is_member = bool(timeseries.iloc[0]["index_constituent"])
+
+            if is_member:
+                constituents.append(symbol)
+                logger.debug(
+                    "Symbol was index member",
+                    layer="data",
+                    operation="get_index_constituents_at_date",
+                    symbol=symbol,
+                    target_date=target_date,
+                )
+
+        except ValueError as e:
+            # Invalid symbol or index name - skip and log warning
+            logger.warning(
+                "Constituent check failed",
+                layer="data",
+                operation="get_index_constituents_at_date",
+                symbol=symbol,
+                index_name=index_name,
+                error=str(e),
+            )
+            # Don't raise - continue checking other symbols
+            continue
+
+        except NorgateBridgeError as e:
+            # Check if this is an invalid symbol/index error (should skip)
+            # vs a real bridge communication error (should raise)
+            error_message = str(e).lower()
+            if "not found" in error_message or "not found" in error_message:
+                # Invalid symbol/index - log warning and skip
+                logger.warning(
+                    "Constituent check failed",
+                    layer="data",
+                    operation="get_index_constituents_at_date",
+                    symbol=symbol,
+                    index_name=index_name,
+                    error=str(e),
+                )
+                # Don't raise - continue checking other symbols
+                continue
+            else:
+                # Real bridge communication error (timeout, etc.) - re-raise
+                logger.error(
+                    "Bridge error during constituent check",
+                    layer="data",
+                    operation="get_index_constituents_at_date",
+                    symbol=symbol,
+                    index_name=index_name,
+                    error=str(e),
+                )
+                raise
+
+    logger.info(
+        "Index constituents retrieved",
+        layer="data",
+        operation="get_index_constituents_at_date",
+        index_name=index_name,
+        target_date=target_date,
+        total_checked=len(symbols) if symbols else 0,
+        constituents_found=len(constituents),
+    )
+
+    return constituents
 
 
 @dataclass

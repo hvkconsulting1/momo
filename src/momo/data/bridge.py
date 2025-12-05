@@ -278,6 +278,134 @@ def fetch_price_data(
         raise NorgateBridgeError(f"Failed to parse price data from bridge: {e}") from e
 
 
+def fetch_index_constituent_timeseries(
+    symbol: str,
+    index_name: str,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    timeout: int = 30,
+) -> pd.DataFrame:
+    """Fetch index constituent timeseries via Windows Python bridge.
+
+    Retrieves point-in-time index membership data for a specific symbol and index.
+    Returns a DataFrame indicating whether the symbol was a constituent (0 or 1)
+    on each trading date.
+
+    DataFrame Schema (Output):
+        Index:
+            - date (datetime64[ns]): Trading date (index)
+        Columns:
+            - index_constituent (int64): 1 if member, 0 if not
+
+    Args:
+        symbol: Ticker symbol (e.g., "AAPL")
+        index_name: Name of index/watchlist (e.g., "Russell 3000", "Russell 1000 Current & Past")
+        start_date: Start date for timeseries (optional, defaults to earliest available)
+        end_date: End date for timeseries (optional, defaults to most recent)
+        timeout: Subprocess timeout in seconds (default: 30)
+
+    Returns:
+        DataFrame with DatetimeIndex and 'index_constituent' column (0 or 1)
+
+    Raises:
+        WindowsPythonNotFoundError: python.exe not found in PATH
+        NDUNotRunningError: Norgate Data Updater is not running
+        NorgateBridgeError: Bridge communication or data parsing errors
+        ValueError: Invalid symbol or index name (raised by norgatedata API)
+
+    Example:
+        >>> from datetime import date
+        >>> constituent_df = fetch_index_constituent_timeseries(
+        ...     "AAPL",
+        ...     "Russell 3000",
+        ...     start_date=date(2020, 1, 1),
+        ...     end_date=date(2020, 12, 31)
+        ... )
+        >>> print(constituent_df.head())
+                    index_constituent
+        date
+        2020-01-02                  1
+        2020-01-03                  1
+    """
+    logger.info(
+        "fetching_index_constituent_timeseries",
+        symbol=symbol,
+        index_name=index_name,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    # Construct norgatedata API call
+    code_parts = [
+        "(lambda: (",
+        "norgatedata.index_constituent_timeseries(",
+        f'"{symbol}"',
+        f', "{index_name}"',
+        ', timeseriesformat="pandas-dataframe"',
+    ]
+
+    if start_date:
+        code_parts.append(f', start_date="{start_date.isoformat()}"')
+    if end_date:
+        code_parts.append(f', end_date="{end_date.isoformat()}"')
+
+    code_parts.append(")")
+
+    # Serialize DataFrame for JSON transfer
+    code_parts.append(".reset_index()")
+    code_parts.append(".assign(Date=lambda x: x['Date'].astype(str))")
+    code_parts.append(".to_dict('records')")
+    code_parts.append("))()")
+
+    code = "".join(code_parts)
+
+    # Execute via bridge
+    result = execute_norgate_code(code, timeout=timeout)
+
+    # Parse result into DataFrame
+    try:
+        if not isinstance(result, list):
+            raise ValueError(f"Expected list of records, got {type(result)}")
+
+        df = pd.DataFrame(result)
+
+        # Normalize column names to lowercase
+        df.columns = df.columns.str.lower()
+
+        # Rename columns to match schema
+        column_mapping = {
+            "date": "date",
+            "index constituent": "index_constituent",
+        }
+        df = df.rename(columns=column_mapping)
+
+        # Convert types
+        df["date"] = pd.to_datetime(df["date"])
+        df["index_constituent"] = df["index_constituent"].astype("int64")
+
+        # Set date as index
+        df.set_index("date", inplace=True)
+        df.index.name = "date"
+
+        logger.info(
+            "index_constituent_timeseries_fetched",
+            symbol=symbol,
+            index_name=index_name,
+            rows=len(df),
+        )
+        return df
+
+    except (KeyError, ValueError, TypeError) as e:
+        logger.error(
+            "index_constituent_timeseries_parse_failed",
+            error=str(e),
+            result_type=type(result),
+        )
+        raise NorgateBridgeError(
+            f"Failed to parse index constituent timeseries from bridge: {e}"
+        ) from e
+
+
 def check_ndu_status(timeout: int = 10) -> bool:
     """Check if Norgate Data Updater (NDU) is running and accessible.
 
