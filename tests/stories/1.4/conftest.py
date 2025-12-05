@@ -292,3 +292,180 @@ def sample_price_df_with_july4_missing() -> pd.DataFrame:
     df["volume"] = df["volume"].astype("int64")
 
     return df
+
+
+@pytest.fixture
+def sample_price_df_with_negative_price(sample_price_df_clean: pd.DataFrame) -> pd.DataFrame:
+    """Prices DataFrame with negative close price for ticker FAIL.
+
+    Args:
+        sample_price_df_clean: Clean price DataFrame fixture dependency
+
+    Returns:
+        pd.DataFrame: Price data with FAIL ticker having negative close price.
+
+    Schema:
+        Same as sample_price_df_clean, but with FAIL ticker added with negative close value.
+    """
+    df = sample_price_df_clean.copy()
+
+    # Add FAIL ticker with negative close price
+    fail_dates = df.index.get_level_values("date").unique()
+    fail_data = []
+
+    for dt in fail_dates:
+        fail_data.append(
+            {
+                "date": dt,
+                "symbol": "FAIL",
+                "open": 100.0,
+                "high": 105.0,
+                "low": 95.0,
+                "close": -50.0,  # Negative close price (invalid)
+                "volume": 1000000,
+                "unadjusted_close": -50.0,
+                "dividend": 0.0,
+            }
+        )
+
+    # Create FAIL DataFrame and concatenate with clean data
+    fail_df = pd.DataFrame(fail_data)
+    fail_df = fail_df.set_index(["date", "symbol"])
+    fail_df["volume"] = fail_df["volume"].astype("int64")
+
+    # Combine with clean data
+    result_df = pd.concat([df, fail_df])
+    result_df = result_df.sort_index()
+
+    return result_df
+
+
+@pytest.fixture
+def sample_price_df_with_50pct_jump_no_div(sample_price_df_clean: pd.DataFrame) -> pd.DataFrame:
+    """Prices DataFrame with 50% price jump without dividend for ticker XYZ.
+
+    Args:
+        sample_price_df_clean: Clean price DataFrame fixture dependency
+
+    Returns:
+        pd.DataFrame: Price data with XYZ ticker showing 50% price jump with dividend=0.
+
+    Schema:
+        Same as sample_price_df_clean, but with XYZ ticker added with 50% price jump.
+        Day 1: close = 100
+        Day 2: close = 150 (50% jump)
+        dividend column = 0.0 for all days (no dividend to justify jump)
+    """
+    df = sample_price_df_clean.copy()
+
+    # Get dates for XYZ ticker
+    xyz_dates = df.index.get_level_values("date").unique()
+    xyz_data = []
+
+    for i, dt in enumerate(xyz_dates):
+        if i == 0:
+            # First day: close = 100
+            close_price = 100.0
+        else:
+            # Second day onwards: close = 150 (50% jump from day 1)
+            close_price = 150.0
+
+        xyz_data.append(
+            {
+                "date": dt,
+                "symbol": "XYZ",
+                "open": close_price,
+                "high": close_price + 5.0,
+                "low": close_price - 5.0,
+                "close": close_price,
+                "volume": 1000000,
+                "unadjusted_close": close_price,
+                "dividend": 0.0,  # No dividend to justify the jump
+            }
+        )
+
+    # Create XYZ DataFrame and concatenate with clean data
+    xyz_df = pd.DataFrame(xyz_data)
+    xyz_df = xyz_df.set_index(["date", "symbol"])
+    xyz_df["volume"] = xyz_df["volume"].astype("int64")
+
+    # Combine with clean data
+    result_df = pd.concat([df, xyz_df])
+    result_df = result_df.sort_index()
+
+    return result_df
+
+
+@pytest.fixture
+def sample_price_df_with_aapl_split() -> pd.DataFrame:
+    """Historical Apple data with 7:1 stock split on June 9, 2014.
+
+    Returns:
+        pd.DataFrame: Price data simulating Apple's 7:1 split with proper adjustment.
+
+    Schema:
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+            - volume: int64
+            - unadjusted_close: float64
+            - dividend: float64
+
+    Data characteristics:
+        - Before split (June 6, 2014): close ~ 645.57 (unadjusted)
+        - After split (June 9, 2014): close ~ 92.22 (unadjusted, 645.57 / 7)
+        - close column shows adjusted prices (no jump after split)
+        - unadjusted_close shows the actual raw prices (with 7x jump)
+        - This simulates a properly adjusted split that should NOT be flagged
+    """
+    # Dates around Apple's 7:1 stock split (June 9, 2014)
+    dates_before_split = pd.to_datetime(["2014-06-05", "2014-06-06"])  # Thu, Fri before split
+    dates_after_split = pd.to_datetime(
+        ["2014-06-09", "2014-06-10", "2014-06-11"]
+    )  # Mon-Wed after split
+
+    aapl_data = []
+
+    # Pre-split prices (unadjusted ~ 645.57)
+    for dt in dates_before_split:
+        aapl_data.append(
+            {
+                "date": dt,
+                "symbol": "AAPL",
+                "open": 640.0,
+                "high": 650.0,
+                "low": 635.0,
+                "close": 645.57,  # Adjusted price (remains consistent)
+                "volume": 10000000,
+                "unadjusted_close": 645.57,  # Raw price before split
+                "dividend": 0.0,
+            }
+        )
+
+    # Post-split prices (unadjusted ~ 92.22 = 645.57 / 7)
+    for dt in dates_after_split:
+        aapl_data.append(
+            {
+                "date": dt,
+                "symbol": "AAPL",
+                "open": 91.0,
+                "high": 93.5,
+                "low": 90.5,
+                "close": 645.57,  # Adjusted price (remains consistent after split adjustment)
+                "volume": 70000000,  # Volume increases 7x post-split
+                "unadjusted_close": 92.22,  # Raw price after split (645.57 / 7)
+                "dividend": 0.0,
+            }
+        )
+
+    # Create DataFrame
+    df = pd.DataFrame(aapl_data)
+    df = df.set_index(["date", "symbol"])
+    df["volume"] = df["volume"].astype("int64")
+
+    return df

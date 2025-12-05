@@ -181,6 +181,103 @@ def _check_date_gaps(
     return result
 
 
+def _check_adjustment_consistency(
+    prices_df: pd.DataFrame, threshold_pct: float = 0.40
+) -> list[str]:
+    """Detect suspected adjustment factor inconsistencies in price data.
+
+    Uses heuristics to identify tickers with potential split/dividend adjustment issues:
+    1. Negative prices (always invalid after proper adjustment)
+    2. Large price jumps (>40% by default) without corresponding dividend information
+
+    Args:
+        prices_df: Price data with MultiIndex (date, symbol) and OHLC columns
+        threshold_pct: Percentage change threshold for flagging suspicious jumps
+            (default: 0.40 = 40%)
+
+    Returns:
+        list[str]: List of ticker symbols with suspected adjustment issues.
+            Empty list if no issues detected.
+
+    DataFrame Schema (Input):
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - close: float64 (required for price jump detection)
+            - dividend: float64 (required to determine if jump is justified)
+
+    Heuristics:
+        - Negative Price: Any close < 0 indicates invalid adjustment
+        - Large Jump: Day-over-day change > threshold_pct AND dividend=0 on that date
+          suggests missing split/dividend adjustment
+        - Threshold: 40% chosen to balance false positive vs. false negative rates
+
+    Note:
+        This function uses heuristics and may produce false positives for:
+        - Volatile stocks with legitimate large price moves
+        - Stocks with undocumented corporate actions
+        Use ValidationReport context to manually review flagged tickers.
+    """
+    df = prices_df.copy()  # Preserve input immutability (ADR-004)
+
+    result: list[str] = []
+
+    # Get unique symbols from MultiIndex
+    if isinstance(df.index, pd.MultiIndex):
+        symbols = df.index.get_level_values("symbol").unique().tolist()
+    else:
+        return result  # Empty result for non-MultiIndex
+
+    # Check each ticker for adjustment issues
+    for ticker in symbols:
+        # Extract data for this ticker using MultiIndex slicing
+        ticker_data = df.loc[(slice(None), ticker), :]
+
+        # Sort by date to ensure chronological order for pct_change calculation
+        ticker_data = ticker_data.sort_index()
+
+        # Check 1: Negative prices (always invalid)
+        negative_prices = ticker_data["close"] < 0
+        if negative_prices.any():
+            result.append(ticker)
+            logger.warning(
+                "Negative price detected",
+                layer="data",
+                operation="_check_adjustment_consistency",
+                ticker=ticker,
+                issue_type="negative_price",
+            )
+            continue  # Skip further checks if already flagged
+
+        # Check 2: Large price jumps without dividend
+        # Calculate day-over-day percentage change in close price
+        pct_changes = ticker_data["close"].pct_change()
+
+        # Find dates where |pct_change| > threshold AND dividend == 0
+        # Large jumps with dividend are likely justified (dividend payout or split with dividend)
+        suspicious_jumps = (pct_changes.abs() > threshold_pct) & (ticker_data["dividend"] == 0.0)
+
+        if suspicious_jumps.any():
+            result.append(ticker)
+            # Get the first suspicious jump for logging
+            first_jump_idx = suspicious_jumps[suspicious_jumps].index[0]
+            jump_date = first_jump_idx[0]  # Extract date from MultiIndex tuple
+            jump_pct = pct_changes.loc[first_jump_idx]
+            logger.warning(
+                "Suspicious price jump detected",
+                layer="data",
+                operation="_check_adjustment_consistency",
+                ticker=ticker,
+                issue_type="large_jump_no_dividend",
+                jump_date=jump_date,
+                jump_pct=f"{jump_pct * 100:.2f}%",
+                threshold_pct=f"{threshold_pct * 100:.0f}%",
+            )
+
+    return result
+
+
 @dataclass
 class ValidationReport:
     """Data quality validation report with comprehensive issue summary.
@@ -264,12 +361,14 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
     # Check for date gaps (>= 10 business days)
     date_gaps = _check_date_gaps(prices_df)
 
+    # Check for adjustment consistency issues (negative prices, large jumps)
+    adjustment_issues = _check_adjustment_consistency(prices_df)
+
     # Future commits will implement:
-    # - _check_adjustment_consistency() for adjustment validation
     # - check_delisting_status() for delisting detection
 
     # Determine validation status
-    is_valid = len(missing_data_counts) == 0 and len(date_gaps) == 0
+    is_valid = len(missing_data_counts) == 0 and len(date_gaps) == 0 and len(adjustment_issues) == 0
 
     # Generate summary message
     issues = []
@@ -281,6 +380,9 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
         gap_count = len(date_gaps)
         total_gaps = sum(len(gaps) for gaps in date_gaps.values())
         issues.append(f"{gap_count} ticker(s) with {total_gaps} date gap(s)")
+    if adjustment_issues:
+        issue_count = len(adjustment_issues)
+        issues.append(f"{issue_count} ticker(s) with adjustment issue(s)")
 
     if issues:
         summary_message = f"Validation found issues: {'; '.join(issues)}"
@@ -292,7 +394,7 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
         date_range=(start_date, end_date),
         missing_data_counts=missing_data_counts,
         date_gaps=date_gaps,
-        adjustment_issues=[],  # Future commits
+        adjustment_issues=adjustment_issues,
         delisting_events={},  # Future commits
         summary_message=summary_message,
         is_valid=is_valid,
