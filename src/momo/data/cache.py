@@ -133,3 +133,81 @@ def _validate_price_schema(df: pd.DataFrame) -> None:
             f"MultiIndex names mismatch: expected {expected_index_names}, "
             f"got {actual_index_names}"
         )
+
+
+def save_prices(df: pd.DataFrame, universe: str, start_date: date, end_date: date) -> Path:
+    """Save price DataFrame to Parquet cache with validation.
+
+    This function validates the DataFrame schema and writes it to a Parquet file
+    using the pyarrow engine with snappy compression. Cache directories are
+    created automatically if they don't exist.
+
+    Args:
+        df: Price data DataFrame to cache
+        universe: Universe identifier (e.g., "russell_1000_cp")
+        start_date: Start date of price data range
+        end_date: End date of price data range
+
+    Returns:
+        Path to the saved Parquet file
+
+    Raises:
+        CacheError: If schema validation fails or write operation encounters errors
+
+    Schema Requirements:
+        See _validate_price_schema() for detailed validation rules.
+        DataFrame must have MultiIndex (date, symbol) and all required columns
+        with correct dtypes.
+
+    Examples:
+        >>> prices_df = load_from_api(symbols, start_date, end_date)
+        >>> cache_path = save_prices(prices_df, "russell_1000_cp", start_date, end_date)
+        >>> print(f"Cached to {cache_path}")
+    """
+    # Validate schema before writing
+    _validate_price_schema(df)
+
+    # Get cache path and ensure directory exists
+    cache_path = get_cache_path(universe, start_date, end_date)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write to Parquet with pyarrow engine and snappy compression
+    df.to_parquet(cache_path, engine="pyarrow", compression="snappy")
+
+    return cache_path
+
+
+def load_prices(universe: str, start_date: date, end_date: date) -> pd.DataFrame | None:
+    """Load price DataFrame from Parquet cache if it exists.
+
+    This function checks if a cached Parquet file exists for the given parameters
+    and loads it if present. The MultiIndex structure is preserved during loading.
+
+    Args:
+        universe: Universe identifier (e.g., "russell_1000_cp")
+        start_date: Start date of price data range
+        end_date: End date of price data range
+
+    Returns:
+        Price DataFrame with MultiIndex (date, symbol) if cache exists,
+        None if cache file does not exist
+
+    Examples:
+        >>> prices_df = load_prices("russell_1000_cp", date(2010, 1, 1), date(2020, 12, 31))
+        >>> if prices_df is None:
+        ...     # Cache miss - fetch from API
+        ...     prices_df = fetch_from_api(...)
+        >>> else:
+        ...     # Cache hit - use cached data
+        ...     print(f"Loaded {len(prices_df)} rows from cache")
+    """
+    cache_path = get_cache_path(universe, start_date, end_date)
+
+    # Return None if cache doesn't exist
+    if not cache_path.exists():
+        return None
+
+    # Load from Parquet using pyarrow engine (preserves MultiIndex)
+    df = pd.read_parquet(cache_path, engine="pyarrow")
+
+    return df
