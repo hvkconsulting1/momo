@@ -50,6 +50,8 @@ def test_1_2_unit_008() -> None:
                 "low": 124.17,
                 "close": 125.07,
                 "volume": 112117471,
+                "unadjusted close": 500.28,
+                "dividend": 0.0,
             }
         ]
 
@@ -121,6 +123,8 @@ def test_1_2_unit_008_defaults() -> None:
                 "low": 124.17,
                 "close": 125.07,
                 "volume": 112117471,
+                "unadjusted close": 500.28,
+                "dividend": 0.0,
             }
         ]
 
@@ -160,6 +164,8 @@ def test_1_2_unit_008_capital_adjustment() -> None:
                 "low": 124.17,
                 "close": 125.07,
                 "volume": 112117471,
+                "unadjusted close": 500.28,
+                "dividend": 0.0,
             }
         ]
 

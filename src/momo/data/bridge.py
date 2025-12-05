@@ -146,6 +146,8 @@ def fetch_price_data(
             - low (float64): Low price (adjusted)
             - close (float64): Closing price (adjusted)
             - volume (int64): Trading volume
+            - unadjusted_close (float64): Raw close for reference
+            - dividend (float64): Dividend amount (for TOTALRETURN adjustment)
 
     Args:
         symbol: Ticker symbol (e.g., "AAPL")
@@ -232,14 +234,26 @@ def fetch_price_data(
             "low": "low",
             "close": "close",
             "volume": "volume",
+            "unadjusted close": "unadjusted_close",
+            "dividend": "dividend",
         }
         prices_df = prices_df.rename(columns=column_mapping)
 
         # Add symbol column
         prices_df["symbol"] = symbol
 
-        # Select and reorder columns
-        required_columns = ["date", "symbol", "open", "high", "low", "close", "volume"]
+        # Select and reorder columns (include dividend and unadjusted_close)
+        required_columns = [
+            "date",
+            "symbol",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "unadjusted_close",
+            "dividend",
+        ]
         prices_df = prices_df[required_columns]
 
         # Convert types
@@ -249,6 +263,8 @@ def fetch_price_data(
         prices_df["low"] = prices_df["low"].astype("float64")
         prices_df["close"] = prices_df["close"].astype("float64")
         prices_df["volume"] = prices_df["volume"].astype("int64")
+        prices_df["unadjusted_close"] = prices_df["unadjusted_close"].astype("float64")
+        prices_df["dividend"] = prices_df["dividend"].astype("float64")
 
         # Set date as index
         prices_df.set_index("date", inplace=True)

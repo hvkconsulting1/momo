@@ -18,6 +18,11 @@ import pandas as pd
 import structlog
 
 from momo.data import bridge, cache
+from momo.utils.exceptions import (
+    NDUNotRunningError,
+    NorgateBridgeError,
+    WindowsPythonNotFoundError,
+)
 
 logger = structlog.get_logger()
 
@@ -35,8 +40,9 @@ def load_universe(
     1. Check cache unless force_refresh=True
     2. If cache hit, return cached data immediately
     3. If cache miss, fetch data from Norgate via bridge for each symbol
-    4. Save fetched data to cache
-    5. Return the complete DataFrame
+    4. Handle partial failures gracefully (continue with remaining symbols)
+    5. Save successfully fetched data to cache (partial results if some failed)
+    6. Return the DataFrame with available data
 
     DataFrame Schema (Output):
         Index:
@@ -61,10 +67,13 @@ def load_universe(
         DataFrame with price data for all symbols, MultiIndex (date, symbol)
 
     Raises:
-        NDUNotRunningError: If Norgate Data Updater is not running
-        WindowsPythonNotFoundError: If Windows Python not found in PATH
-        NorgateBridgeError: If bridge communication fails
+        ValueError: If all symbols fail to fetch (logs partial failures as warnings)
         CacheError: If cache save operation fails
+
+    Note on Error Handling:
+        Individual symbol fetch failures are logged but do not stop execution.
+        The function continues fetching remaining symbols and caches partial
+        results. Only if ALL symbols fail does the function raise ValueError.
 
     Example:
         >>> df = load_universe(
@@ -132,6 +141,7 @@ def load_universe(
     # Step 3: Fetch data for each symbol sequentially
     # Note: Batch optimization deferred to future story
     symbol_dfs: list[pd.DataFrame] = []
+    failed_symbols: list[tuple[str, Exception]] = []
 
     for i, symbol in enumerate(symbols, start=1):
         logger.info(
@@ -143,21 +153,65 @@ def load_universe(
             end_date=end_date.isoformat(),
         )
 
-        symbol_df = bridge.fetch_price_data(
-            symbol=symbol,
-            start_date=start_date,
-            end_date=end_date,
-            adjustment="TOTALRETURN",
-            timeout=30,
+        try:
+            symbol_df = bridge.fetch_price_data(
+                symbol=symbol,
+                start_date=start_date,
+                end_date=end_date,
+                adjustment="TOTALRETURN",
+                timeout=30,
+            )
+            symbol_dfs.append(symbol_df)
+        except (
+            NDUNotRunningError,
+            WindowsPythonNotFoundError,
+            NorgateBridgeError,
+        ) as e:
+            logger.error(
+                "symbol_fetch_failed",
+                symbol=symbol,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            failed_symbols.append((symbol, e))
+            continue  # Continue fetching remaining symbols
+
+    # Log partial failure if some symbols failed
+    if failed_symbols:
+        logger.warning(
+            "partial_fetch_failure",
+            failed_count=len(failed_symbols),
+            successful_count=len(symbol_dfs),
+            failed_symbols=[sym for sym, _ in failed_symbols],
+            total_requested=len(symbols),
         )
-        symbol_dfs.append(symbol_df)
 
     # Step 4: Combine all symbol DataFrames
     if not symbol_dfs:
-        # Handle empty list (no symbols)
+        # All symbols failed - raise error with details
+        if failed_symbols:
+            raise ValueError(
+                f"All {len(symbols)} symbols failed to fetch. "
+                f"Failed symbols: {[sym for sym, _ in failed_symbols]}"
+            )
+        # No symbols provided (edge case)
         raise ValueError("No symbols provided to load_universe")
 
+    # Concatenate all symbol DataFrames
+    # Bridge returns DataFrames with date index and symbol column (not in index)
     combined_df = pd.concat(symbol_dfs, axis=0)
+
+    # Create MultiIndex (date, symbol)
+    # The date is currently the index, symbol is a column
+    # We need to move both to the index to create MultiIndex
+    if "symbol" in combined_df.columns:
+        combined_df = combined_df.set_index("symbol", append=True)
+        # After set_index with append=True, index is (date, symbol) which is correct
+        # No need to swap levels
+    else:
+        # If symbol not in columns (shouldn't happen), it might already be in index
+        # In that case, do nothing - the MultiIndex is already correct
+        pass
 
     # Step 5: Save to cache
     cache.save_prices(

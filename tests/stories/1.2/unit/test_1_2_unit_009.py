@@ -51,6 +51,8 @@ def test_1_2_unit_009() -> None:
                 "low": 124.17,
                 "close": 125.07,
                 "volume": 112117471,
+                "unadjusted close": 500.28,
+                "dividend": 0.0,
             },
             {
                 "date": "2023-01-04",
@@ -59,6 +61,8 @@ def test_1_2_unit_009() -> None:
                 "low": 125.08,
                 "close": 126.36,
                 "volume": 89113631,
+                "unadjusted close": 505.44,
+                "dividend": 0.0,
             },
         ]
 
@@ -71,7 +75,16 @@ def test_1_2_unit_009() -> None:
         ), f"Result should be pandas DataFrame, got {type(result_df)}"
 
         # Step 4: Assert columns present
-        expected_columns = ["symbol", "open", "high", "low", "close", "volume"]
+        expected_columns = [
+            "symbol",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "unadjusted_close",
+            "dividend",
+        ]
         for col in expected_columns:
             assert col in result_df.columns, (
                 f"Column '{col}' should be in DataFrame\n"
@@ -131,6 +144,8 @@ def test_1_2_unit_009_list_format() -> None:
                 "low": 124.17,
                 "close": 125.07,
                 "volume": 112117471,
+                "unadjusted close": 500.28,
+                "dividend": 0.0,
             }
         ]
 
