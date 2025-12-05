@@ -109,3 +109,186 @@ def sample_price_df_with_nans_ohlc(sample_price_df_clean: pd.DataFrame) -> pd.Da
     df.loc[msft_indices[3], "high"] = float("nan")
 
     return df
+
+
+@pytest.fixture
+def sample_price_df_with_10day_gap() -> pd.DataFrame:
+    """Prices DataFrame with 10-business-day gap for TSLA.
+
+    Returns:
+        pd.DataFrame: Price data with TSLA missing data from 2020-06-01 to 2020-06-15.
+
+    Schema:
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+            - volume: int64
+            - unadjusted_close: float64
+            - dividend: float64
+
+    Data characteristics:
+        - TSLA has a gap from 2020-05-29 (Fri) to 2020-06-15 (Mon) = 11 business days
+        - Other tickers (AAPL, MSFT, GOOGL, AMZN) have complete data with no gaps
+    """
+    # Create date range WITH gap for TSLA only
+    dates_before_gap = pd.date_range("2020-05-25", "2020-05-29", freq="B")  # Week before gap
+    dates_after_gap = pd.date_range("2020-06-15", "2020-06-19", freq="B")  # Week after gap
+
+    # Create CONTINUOUS date range for other tickers (no gap)
+    all_dates_continuous = pd.date_range("2020-05-25", "2020-06-19", freq="B")
+
+    # Create list to hold all rows
+    rows = []
+
+    # Create data for all tickers except TSLA with CONTINUOUS date range (no gaps)
+    for symbol in ["AAPL", "MSFT", "GOOGL", "AMZN"]:
+        for dt in all_dates_continuous:
+            rows.append(
+                {
+                    "date": dt,
+                    "symbol": symbol,
+                    "open": 100.0,
+                    "high": 105.0,
+                    "low": 95.0,
+                    "close": 102.0,
+                    "volume": 1000000,
+                    "unadjusted_close": 102.0,
+                    "dividend": 0.0,
+                }
+            )
+
+    # Create data for TSLA - only dates BEFORE and AFTER the gap (missing middle dates)
+    # dates_before_gap: 2020-05-25 to 2020-05-29 (5 business days)
+    # dates_after_gap: 2020-06-15 to 2020-06-19 (5 business days)
+    # Gap: 2020-05-29 to 2020-06-15 = 11 business days
+    for dt in dates_before_gap:
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "TSLA",
+                "open": 100.0,
+                "high": 105.0,
+                "low": 95.0,
+                "close": 102.0,
+                "volume": 1000000,
+                "unadjusted_close": 102.0,
+                "dividend": 0.0,
+            }
+        )
+
+    for dt in dates_after_gap:
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "TSLA",
+                "open": 100.0,
+                "high": 105.0,
+                "low": 95.0,
+                "close": 102.0,
+                "volume": 1000000,
+                "unadjusted_close": 102.0,
+                "dividend": 0.0,
+            }
+        )
+
+    # Create DataFrame from rows
+    df = pd.DataFrame(rows)
+    df = df.set_index(["date", "symbol"])
+    df["volume"] = df["volume"].astype("int64")
+
+    return df
+
+
+@pytest.fixture
+def sample_price_df_with_weekends_missing() -> pd.DataFrame:
+    """Typical trading data with weekday-only prices (no weekend data).
+
+    Returns:
+        pd.DataFrame: Price data for 10 business days (Mon-Fri only).
+
+    Schema:
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+            - Dates: Business days only (freq='B')
+        Columns:
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+            - volume: int64
+            - unadjusted_close: float64
+            - dividend: float64
+    """
+    # Use business day frequency to create typical trading data (no weekends)
+    dates = pd.date_range("2020-01-06", periods=10, freq="B")  # Starts Monday
+    symbols = ["AAPL", "MSFT", "GOOGL"]
+
+    # Create MultiIndex
+    index = pd.MultiIndex.from_product([dates, symbols], names=["date", "symbol"])
+
+    # Create data
+    data = {
+        "open": 100.0,
+        "high": 105.0,
+        "low": 95.0,
+        "close": 102.0,
+        "volume": 1000000,
+        "unadjusted_close": 102.0,
+        "dividend": 0.0,
+    }
+    df = pd.DataFrame(index=index, data=[data] * len(index))
+    df["volume"] = df["volume"].astype("int64")
+
+    return df
+
+
+@pytest.fixture
+def sample_price_df_with_july4_missing() -> pd.DataFrame:
+    """Trading data missing July 3, 2020 (Independence Day observed, Friday).
+
+    Returns:
+        pd.DataFrame: Price data with expected market holiday gap.
+
+    Schema:
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+            - Dates: 2020-07-01, 2020-07-02, 2020-07-06 (missing 2020-07-03 holiday)
+        Columns:
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+            - volume: int64
+            - unadjusted_close: float64
+            - dividend: float64
+    """
+    # Create dates around July 4, 2020
+    # July 3, 2020 was Friday (market closed for Independence Day observed)
+    # Include: Wed 7/1, Thu 7/2, Mon 7/6 (skip Fri 7/3)
+    dates = pd.to_datetime(["2020-07-01", "2020-07-02", "2020-07-06"])
+    symbols = ["AAPL", "MSFT", "GOOGL"]
+
+    # Create MultiIndex
+    index = pd.MultiIndex.from_product([dates, symbols], names=["date", "symbol"])
+
+    # Create data
+    data = {
+        "open": 100.0,
+        "high": 105.0,
+        "low": 95.0,
+        "close": 102.0,
+        "volume": 1000000,
+        "unadjusted_close": 102.0,
+        "dividend": 0.0,
+    }
+    df = pd.DataFrame(index=index, data=[data] * len(index))
+    df["volume"] = df["volume"].astype("int64")
+
+    return df

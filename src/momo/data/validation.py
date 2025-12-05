@@ -98,6 +98,89 @@ def _check_missing_values(prices_df: pd.DataFrame) -> dict[str, int]:
     return result
 
 
+def _check_date_gaps(
+    prices_df: pd.DataFrame, threshold_days: int = 10
+) -> dict[str, list[tuple[date_type, date_type]]]:
+    """Detect suspicious date gaps in price time series data.
+
+    Identifies gaps of 10 or more business days in each ticker's time series,
+    which may indicate missing data or data quality issues. Uses pandas business
+    day logic to avoid false positives from weekends.
+
+    Args:
+        prices_df: Price data with MultiIndex (date, symbol) and OHLC columns
+        threshold_days: Minimum business days gap to flag as suspicious (default: 10)
+
+    Returns:
+        dict[str, list[tuple[date_type, date_type]]]: Mapping of ticker symbol ->
+            list of gap date ranges. Each gap is represented as (last_date_before_gap,
+            first_date_after_gap). Only includes tickers with at least one suspicious gap.
+
+    DataFrame Schema (Input):
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - Any columns (only index used for gap detection)
+
+    Note:
+        This function uses pandas business day logic (freq='B') to count weekdays only.
+        It does NOT use NYSE holiday calendar, so may flag single-day market holidays
+        as suspicious if they extend a weekend to create >= 10 business days gap.
+        For most practical purposes, this limitation is acceptable as 10-day threshold
+        is well above typical holiday closures (1-2 days).
+    """
+    df = prices_df.copy()  # Preserve input immutability (ADR-004)
+
+    result: dict[str, list[tuple[date_type, date_type]]] = {}
+
+    # Get unique symbols from MultiIndex
+    if isinstance(df.index, pd.MultiIndex):
+        symbols = df.index.get_level_values("symbol").unique().tolist()
+    else:
+        return result  # Empty result for non-MultiIndex
+
+    # Check each ticker for date gaps
+    for ticker in symbols:
+        # Extract dates for this ticker using MultiIndex slicing
+        ticker_data = df.loc[(slice(None), ticker), :]
+        ticker_dates = ticker_data.index.get_level_values("date").unique().sort_values()
+
+        if len(ticker_dates) < 2:
+            continue  # Skip tickers with single date (no gaps possible)
+
+        gaps: list[tuple[date_type, date_type]] = []
+
+        # Check consecutive date pairs for suspicious gaps
+        for i in range(len(ticker_dates) - 1):
+            date_before = ticker_dates[i]
+            date_after = ticker_dates[i + 1]
+
+            # Count business days between dates using pandas business day calendar
+            # This automatically excludes weekends from the count
+            business_days = pd.bdate_range(start=date_before, end=date_after, freq="B")
+            gap_size = len(business_days) - 1  # -1 because bdate_range includes both endpoints
+
+            # Flag gaps >= threshold_days business days
+            if gap_size >= threshold_days:
+                gaps.append((date_before.date(), date_after.date()))
+                logger.warning(
+                    "Date gap detected",
+                    layer="data",
+                    operation="_check_date_gaps",
+                    ticker=ticker,
+                    gap_start=date_before.date(),
+                    gap_end=date_after.date(),
+                    gap_business_days=gap_size,
+                )
+
+        # Only include tickers with at least one gap
+        if gaps:
+            result[ticker] = gaps
+
+    return result
+
+
 @dataclass
 class ValidationReport:
     """Data quality validation report with comprehensive issue summary.
@@ -178,22 +261,29 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
     # Check for missing values (NaN) in OHLC columns
     missing_data_counts = _check_missing_values(prices_df)
 
+    # Check for date gaps (>= 10 business days)
+    date_gaps = _check_date_gaps(prices_df)
+
     # Future commits will implement:
-    # - _check_date_gaps() for gap identification
     # - _check_adjustment_consistency() for adjustment validation
     # - check_delisting_status() for delisting detection
 
     # Determine validation status
-    is_valid = len(missing_data_counts) == 0
+    is_valid = len(missing_data_counts) == 0 and len(date_gaps) == 0
 
     # Generate summary message
+    issues = []
     if missing_data_counts:
         ticker_count = len(missing_data_counts)
         total_nans = sum(missing_data_counts.values())
-        summary_message = (
-            f"Validation found issues: {ticker_count} ticker(s) with "
-            f"{total_nans} missing value(s)"
-        )
+        issues.append(f"{ticker_count} ticker(s) with {total_nans} missing value(s)")
+    if date_gaps:
+        gap_count = len(date_gaps)
+        total_gaps = sum(len(gaps) for gaps in date_gaps.values())
+        issues.append(f"{gap_count} ticker(s) with {total_gaps} date gap(s)")
+
+    if issues:
+        summary_message = f"Validation found issues: {'; '.join(issues)}"
     else:
         summary_message = f"Validation complete: {total_tickers} tickers, no issues detected"
 
@@ -201,7 +291,7 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
         total_tickers=total_tickers,
         date_range=(start_date, end_date),
         missing_data_counts=missing_data_counts,
-        date_gaps={},  # Future commits
+        date_gaps=date_gaps,
         adjustment_issues=[],  # Future commits
         delisting_events={},  # Future commits
         summary_message=summary_message,
