@@ -673,3 +673,202 @@ def mock_validation_report():
         summary_message="Validation found issues: 5 ticker(s) with 15 missing value(s); 2 ticker(s) with 2 date gap(s); 2 ticker(s) with adjustment issue(s); 10 delisted",
         is_valid=False,
     )
+
+
+@pytest.fixture
+def sample_price_df_100tickers() -> pd.DataFrame:
+    """Large dataset with 100 tickers, 252 trading days (1 year) for performance testing.
+
+    Returns:
+        pd.DataFrame: Price data with 100 tickers and 252 business days, clean data.
+
+    Schema:
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+            - volume: int64
+            - unadjusted_close: float64
+            - dividend: float64
+
+    Data characteristics:
+        - 100 tickers (TICK0001 to TICK0100)
+        - 252 trading days (1 year of business days starting 2020-01-01)
+        - All clean data with no validation issues (for performance baseline)
+    """
+    # Create date range for 1 year of trading (252 business days)
+    dates = pd.date_range("2020-01-01", periods=252, freq="B")
+
+    # Generate 100 ticker symbols
+    symbols = [f"TICK{i:04d}" for i in range(1, 101)]
+
+    # Create MultiIndex
+    index = pd.MultiIndex.from_product([dates, symbols], names=["date", "symbol"])
+
+    # Create clean data
+    data = {
+        "open": 100.0,
+        "high": 105.0,
+        "low": 95.0,
+        "close": 102.0,
+        "volume": 1000000,
+        "unadjusted_close": 102.0,
+        "dividend": 0.0,
+    }
+
+    # Create DataFrame with repeated values for all rows
+    df = pd.DataFrame(index=index, data=[data] * len(index))
+    df["volume"] = df["volume"].astype("int64")
+
+    return df
+
+
+@pytest.fixture
+def cached_corrupt_test_data() -> pd.DataFrame:
+    """DataFrame with multiple known data quality issues for comprehensive validation testing.
+
+    Returns:
+        pd.DataFrame: Price data with 4 known issue types across different tickers.
+
+    Schema:
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+            - volume: int64
+            - unadjusted_close: float64
+            - dividend: float64
+
+    Data characteristics (4 issue types):
+        1. AAPL: 5 NaN values in close column (missing data issue)
+        2. MSFT: 10-business-day gap from 2020-06-01 to 2020-06-15 (date gap issue)
+        3. TSLA: 50% price jump without dividend (adjustment consistency issue)
+        4. ENRN: Data ends 2001-12-02, delisted ticker (delisting issue)
+        5. GOOGL, AMZN: Clean data (baseline control)
+    """
+    rows = []
+
+    # Date range for most tickers (2020)
+    dates_2020 = pd.date_range("2020-05-25", "2020-06-19", freq="B")
+
+    # 1. AAPL: Clean data with 5 NaN values in close column
+    for i, dt in enumerate(dates_2020):
+        # Inject NaN at specific indices (0, 3, 6, 9, 12)
+        close_val = float("nan") if i in [0, 3, 6, 9, 12] else 102.0
+
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "AAPL",
+                "open": 100.0,
+                "high": 105.0,
+                "low": 95.0,
+                "close": close_val,
+                "volume": 1000000,
+                "unadjusted_close": 102.0,
+                "dividend": 0.0,
+            }
+        )
+
+    # 2. MSFT: 10-business-day gap
+    # Data before gap: 2020-05-25 to 2020-05-29
+    dates_before_gap = pd.date_range("2020-05-25", "2020-05-29", freq="B")
+    for dt in dates_before_gap:
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "MSFT",
+                "open": 100.0,
+                "high": 105.0,
+                "low": 95.0,
+                "close": 102.0,
+                "volume": 1000000,
+                "unadjusted_close": 102.0,
+                "dividend": 0.0,
+            }
+        )
+
+    # Data after gap: 2020-06-15 to 2020-06-19
+    dates_after_gap = pd.date_range("2020-06-15", "2020-06-19", freq="B")
+    for dt in dates_after_gap:
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "MSFT",
+                "open": 100.0,
+                "high": 105.0,
+                "low": 95.0,
+                "close": 102.0,
+                "volume": 1000000,
+                "unadjusted_close": 102.0,
+                "dividend": 0.0,
+            }
+        )
+
+    # 3. TSLA: 50% price jump without dividend
+    for i, dt in enumerate(dates_2020):
+        # First day: close = 100, then jump to 150 (50% increase)
+        close_val = 100.0 if i == 0 else 150.0
+
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "TSLA",
+                "open": close_val,
+                "high": close_val + 5.0,
+                "low": close_val - 5.0,
+                "close": close_val,
+                "volume": 1000000,
+                "unadjusted_close": close_val,
+                "dividend": 0.0,  # No dividend to justify jump
+            }
+        )
+
+    # 4. ENRN: Delisted ticker with data ending 2001-12-02
+    enron_dates = pd.date_range("2001-11-26", "2001-12-02", freq="B")
+    for dt in enron_dates:
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "ENRN",
+                "open": 10.0,
+                "high": 12.0,
+                "low": 8.0,
+                "close": 9.5,
+                "volume": 5000000,
+                "unadjusted_close": 9.5,
+                "dividend": 0.0,
+            }
+        )
+
+    # 5. GOOGL and AMZN: Clean baseline data (no issues)
+    for symbol in ["GOOGL", "AMZN"]:
+        for dt in dates_2020:
+            rows.append(
+                {
+                    "date": dt,
+                    "symbol": symbol,
+                    "open": 100.0,
+                    "high": 105.0,
+                    "low": 95.0,
+                    "close": 102.0,
+                    "volume": 1000000,
+                    "unadjusted_close": 102.0,
+                    "dividend": 0.0,
+                }
+            )
+
+    # Create DataFrame
+    df = pd.DataFrame(rows)
+    df = df.set_index(["date", "symbol"])
+    df["volume"] = df["volume"].astype("int64")
+
+    return df
