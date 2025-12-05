@@ -13,6 +13,7 @@ Steps:
 Expected: "FAIL" flagged for negative price (invalid state after adjustment error)
 """
 
+import pandas as pd
 import pytest
 
 from momo.data.validation import _check_adjustment_consistency
@@ -20,7 +21,7 @@ from momo.data.validation import _check_adjustment_consistency
 
 @pytest.mark.p0
 @pytest.mark.unit
-def test_1_4_unit_011(sample_price_df_with_negative_price):
+def test_1_4_unit_011(sample_price_df_with_negative_price: pd.DataFrame) -> None:
     """Test _check_adjustment_consistency() flags negative prices."""
     # Given: DataFrame with FAIL ticker having negative close price
     prices_df = sample_price_df_with_negative_price

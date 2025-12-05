@@ -758,7 +758,8 @@ def validate_prices(prices_df: pd.DataFrame, check_delistings: bool = True) -> V
 
     # Check for delisting events (optional)
     if check_delistings:
-        # check_delisting_status returns dict[str, date_type], which is compatible with dict[str, date_type | None]
+        # check_delisting_status returns dict[str, date_type],
+        # which is compatible with dict[str, date_type | None]
         delisting_events: dict[str, date_type | None] = cast(
             dict[str, date_type | None], check_delisting_status(prices_df, query_end_date=end_date)
         )

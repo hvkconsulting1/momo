@@ -9,6 +9,7 @@ Risk Coverage: TECH-001
 """
 
 from datetime import date
+from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
@@ -52,7 +53,7 @@ def test_1_4_unit_014(mock_bridge_response_russell1000: list[str]) -> None:
     )
 
     # Mock the bridge function with side_effect to return different data per symbol
-    def mock_fetch_side_effect(symbol: str, **kwargs):
+    def mock_fetch_side_effect(symbol: str, **kwargs: Any) -> pd.DataFrame:
         if symbol == "AAPL":
             return mock_timeseries_aapl
         elif symbol == "MSFT":

@@ -13,6 +13,7 @@ Steps:
 Expected: "AAPL" not flagged (legitimate split with proper adjustment should not be flagged)
 """
 
+import pandas as pd
 import pytest
 
 from momo.data.validation import _check_adjustment_consistency
@@ -20,7 +21,7 @@ from momo.data.validation import _check_adjustment_consistency
 
 @pytest.mark.p1
 @pytest.mark.unit
-def test_1_4_unit_013(sample_price_df_with_aapl_split):
+def test_1_4_unit_013(sample_price_df_with_aapl_split: pd.DataFrame) -> None:
     """Test _check_adjustment_consistency() allows legitimate AAPL 7:1 split."""
     # Given: DataFrame with Apple's historical 7:1 split properly adjusted
     prices_df = sample_price_df_with_aapl_split

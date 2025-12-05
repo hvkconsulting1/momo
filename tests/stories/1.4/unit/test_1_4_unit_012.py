@@ -13,6 +13,7 @@ Steps:
 Expected: "XYZ" flagged for 50% jump without dividend (detects missing split/dividend adjustment)
 """
 
+import pandas as pd
 import pytest
 
 from momo.data.validation import _check_adjustment_consistency
@@ -20,7 +21,7 @@ from momo.data.validation import _check_adjustment_consistency
 
 @pytest.mark.p1
 @pytest.mark.unit
-def test_1_4_unit_012(sample_price_df_with_50pct_jump_no_div):
+def test_1_4_unit_012(sample_price_df_with_50pct_jump_no_div: pd.DataFrame) -> None:
     """Test _check_adjustment_consistency() flags 50% price jump without dividend."""
     # Given: DataFrame with XYZ ticker having 50% price jump and dividend=0
     prices_df = sample_price_df_with_50pct_jump_no_div
