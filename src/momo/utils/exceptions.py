@@ -88,3 +88,19 @@ class CacheError(DataError):
     """
 
     pass
+
+
+class ValidationError(DataError):
+    """Data quality validation errors.
+
+    Raised when data quality checks fail during validation operations,
+    including missing values, data gaps, or adjustment inconsistencies.
+
+    Examples of scenarios:
+    - Missing price data (NaN values in OHLC columns)
+    - Unexpected gaps in time series (> 10 business days)
+    - Invalid adjustment factors (negative prices after adjustment)
+    - Inconsistent corporate action application
+    """
+
+    pass
