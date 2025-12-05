@@ -9,7 +9,7 @@ Risk Coverage: TECH-001
 """
 
 from datetime import date
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest

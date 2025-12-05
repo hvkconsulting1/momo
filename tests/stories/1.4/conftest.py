@@ -490,3 +490,186 @@ def sample_price_df_with_aapl_split() -> pd.DataFrame:
     df["volume"] = df["volume"].astype("int64")
 
     return df
+
+
+@pytest.fixture
+def sample_price_df_with_enron_delisted() -> pd.DataFrame:
+    """Prices DataFrame with Enron (ENRN) data ending on December 2, 2001 (delisted).
+
+    Returns:
+        pd.DataFrame: Price data with Enron delisting at historical date.
+
+    Schema:
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+            - volume: int64
+            - unadjusted_close: float64
+            - dividend: float64
+
+    Data characteristics:
+        - ENRN data ends on 2001-12-02 (last trading day before bankruptcy delisting)
+        - Other tickers (AAPL, MSFT) have continuous data through 2020
+        - Used to test delisting detection heuristic (data ending > 30 days before query end)
+    """
+    # Create recent data for AAPL and MSFT (2020)
+    recent_dates = pd.date_range("2020-01-01", periods=10, freq="B")
+    recent_symbols = ["AAPL", "MSFT"]
+
+    rows = []
+
+    # Add recent data for active tickers
+    for symbol in recent_symbols:
+        for dt in recent_dates:
+            rows.append(
+                {
+                    "date": dt,
+                    "symbol": symbol,
+                    "open": 100.0,
+                    "high": 105.0,
+                    "low": 95.0,
+                    "close": 102.0,
+                    "volume": 1000000,
+                    "unadjusted_close": 102.0,
+                    "dividend": 0.0,
+                }
+            )
+
+    # Add historical Enron data ending December 2, 2001
+    enron_dates = pd.date_range("2001-11-26", "2001-12-02", freq="B")  # Last week of trading
+    for dt in enron_dates:
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "ENRN",
+                "open": 10.0,
+                "high": 12.0,
+                "low": 8.0,
+                "close": 9.5,
+                "volume": 5000000,
+                "unadjusted_close": 9.5,
+                "dividend": 0.0,
+            }
+        )
+
+    # Create DataFrame
+    df = pd.DataFrame(rows)
+    df = df.set_index(["date", "symbol"])
+    df["volume"] = df["volume"].astype("int64")
+
+    return df
+
+
+@pytest.fixture
+def sample_price_df_with_recent_delisting() -> pd.DataFrame:
+    """Prices DataFrame with ticker ABC delisted on June 15, 2019.
+
+    Returns:
+        pd.DataFrame: Price data with ABC delisting in 2019.
+
+    Schema:
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - open: float64
+            - high: float64
+            - low: float64
+            - close: float64
+            - volume: int64
+            - unadjusted_close: float64
+            - dividend: float64
+
+    Data characteristics:
+        - ABC data ends on 2019-06-15 (last trading day)
+        - Other tickers (AAPL, MSFT) have continuous data through 2020
+        - Used to test delisting detection with query_end_date = 2020-01-01
+    """
+    # Create recent data for AAPL and MSFT (2020)
+    recent_dates = pd.date_range("2020-01-01", periods=10, freq="B")
+    recent_symbols = ["AAPL", "MSFT"]
+
+    rows = []
+
+    # Add recent data for active tickers
+    for symbol in recent_symbols:
+        for dt in recent_dates:
+            rows.append(
+                {
+                    "date": dt,
+                    "symbol": symbol,
+                    "open": 100.0,
+                    "high": 105.0,
+                    "low": 95.0,
+                    "close": 102.0,
+                    "volume": 1000000,
+                    "unadjusted_close": 102.0,
+                    "dividend": 0.0,
+                }
+            )
+
+    # Add ABC data ending June 15, 2019
+    abc_dates = pd.date_range("2019-06-10", "2019-06-15", freq="B")  # Last week of trading
+    for dt in abc_dates:
+        rows.append(
+            {
+                "date": dt,
+                "symbol": "ABC",
+                "open": 50.0,
+                "high": 52.0,
+                "low": 48.0,
+                "close": 51.0,
+                "volume": 500000,
+                "unadjusted_close": 51.0,
+                "dividend": 0.0,
+            }
+        )
+
+    # Create DataFrame
+    df = pd.DataFrame(rows)
+    df = df.set_index(["date", "symbol"])
+    df["volume"] = df["volume"].astype("int64")
+
+    return df
+
+
+@pytest.fixture
+def mock_validation_report():
+    """Sample ValidationReport with various issues for testing.
+
+    Returns:
+        ValidationReport: Sample report with missing data, gaps, adjustment issues, and delistings.
+    """
+    from datetime import date
+
+    from momo.data.validation import ValidationReport
+
+    return ValidationReport(
+        total_tickers=10,
+        date_range=(date(2020, 1, 1), date(2021, 1, 1)),
+        missing_data_counts={"AAPL": 5, "MSFT": 3, "GOOGL": 2, "AMZN": 1, "TSLA": 4},
+        date_gaps={
+            "MSFT": [(date(2020, 6, 1), date(2020, 6, 15))],
+            "TSLA": [(date(2020, 8, 1), date(2020, 8, 20))],
+        },
+        adjustment_issues=["XYZ", "FAIL"],
+        delisting_events={
+            "ENRN": date(2001, 12, 2),
+            "ABC": date(2019, 6, 15),
+            "DEF": date(2018, 3, 10),
+            "GHI": date(2017, 9, 20),
+            "JKL": date(2016, 5, 5),
+            "MNO": date(2015, 11, 30),
+            "PQR": date(2014, 7, 15),
+            "STU": date(2013, 2, 28),
+            "VWX": date(2012, 10, 10),
+            "YZ": date(2011, 4, 1),
+        },
+        summary_message="Validation found issues: 5 ticker(s) with 15 missing value(s); 2 ticker(s) with 2 date gap(s); 2 ticker(s) with adjustment issue(s); 10 delisted",
+        is_valid=False,
+    )

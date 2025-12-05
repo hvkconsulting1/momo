@@ -13,15 +13,63 @@ Architecture Context:
     Dependents: Signal layer can depend on this module
     Pure: No (I/O operations allowed in data layer)
 
-Usage:
-    >>> from momo.data.validation import validate_prices
+Example Usage:
+    >>> from momo.data.validation import validate_prices, check_delisting_status
+    >>> from momo.data.loader import load_universe
+    >>> from datetime import date
     >>> import pandas as pd
-    >>> # Assume prices_df is MultiIndex DataFrame from loader.load_universe()
+    >>>
+    >>> # Load price data from cache or Norgate bridge
+    >>> prices_df = load_universe(
+    ...     watchlist_name="Russell 1000 Current & Past",
+    ...     start_date=date(2020, 1, 1),
+    ...     end_date=date(2020, 12, 31)
+    ... )
+    >>>
+    >>> # Validate price data quality
     >>> report = validate_prices(prices_df)
-    >>> print(report.summary_message)
+    >>>
+    >>> # Print formatted validation report
+    >>> print(report)
+    >>> # Output:
+    >>> # ===== Validation Report =====
+    >>> # Total Tickers: 1000
+    >>> # Date Range: 2020-01-01 to 2020-12-31
+    >>> # Missing Data: 5 ticker(s) with issues
+    >>> # Date Gaps: 2 ticker(s) with issues
+    >>> # Adjustment Issues: 1 ticker(s)
+    >>> # Delisting Events: 10 ticker(s)
+    >>> # Status: INVALID
+    >>> # Summary: Validation found issues: 5 ticker(s) with 12 missing value(s); ...
+    >>> # =============================
+    >>>
+    >>> # Inspect specific issues
     >>> if not report.is_valid:
-    >>>     print(f"Missing data: {report.missing_data_counts}")
-    >>>     print(f"Date gaps: {report.date_gaps}")
+    ...     # Check for missing data
+    ...     if report.missing_data_counts:
+    ...         print(f"Tickers with NaN values: {list(report.missing_data_counts.keys())}")
+    ...
+    ...     # Check for date gaps
+    ...     if report.date_gaps:
+    ...         for ticker, gaps in report.date_gaps.items():
+    ...             print(f"{ticker} has {len(gaps)} gap(s): {gaps}")
+    ...
+    ...     # Check for adjustment issues
+    ...     if report.adjustment_issues:
+    ...         print(f"Tickers with adjustment problems: {report.adjustment_issues}")
+    ...
+    ...     # Check for delisted tickers
+    ...     if report.delisting_events:
+    ...         for ticker, delisting_date in report.delisting_events.items():
+    ...             print(f"{ticker} delisted on {delisting_date}")
+    >>>
+    >>> # Manual delisting check for specific query date
+    >>> delisting_dict = check_delisting_status(
+    ...     prices_df,
+    ...     query_end_date=date(2021, 1, 1),
+    ...     threshold_days=30
+    ... )
+    >>> print(f"Delisted tickers: {delisting_dict}")
 """
 
 from __future__ import annotations
@@ -29,6 +77,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date as date_type
 from datetime import timedelta
+from typing import cast
 
 import pandas as pd
 import structlog
@@ -467,6 +516,101 @@ def get_index_constituents_at_date(
     return constituents
 
 
+def check_delisting_status(
+    prices_df: pd.DataFrame,
+    query_end_date: date_type | None = None,
+    threshold_days: int = 30,
+) -> dict[str, date_type]:
+    """Detect delisted tickers by identifying time series ending before query date.
+
+    Uses a heuristic to identify likely delisted securities: if a ticker's data
+    ends more than `threshold_days` before the `query_end_date`, it is flagged
+    as delisted. This approach works well for historical backtests where we
+    expect all active securities to have data through the query end date.
+
+    Args:
+        prices_df: Price data with MultiIndex (date, symbol) and OHLC columns
+        query_end_date: Expected end date for active securities (default: max date in DataFrame)
+        threshold_days: Minimum days before query_end_date to flag as delisted (default: 30)
+
+    Returns:
+        dict[str, date_type]: Mapping of ticker symbol -> last trading date.
+            Only includes tickers flagged as delisted (data ending > threshold_days
+            before query_end_date). Empty dict if no delistings detected.
+
+    DataFrame Schema (Input):
+        Index:
+            - MultiIndex with levels: (date: datetime64[ns], symbol: str)
+            - Names: ['date', 'symbol']
+        Columns:
+            - Any columns (only index used for delisting detection)
+
+    Heuristic:
+        A ticker is considered delisted if its last date in the time series is
+        more than `threshold_days` before `query_end_date`. This heuristic works
+        because:
+        - Active securities have data through the query period
+        - Delisted securities have data ending at/near delisting date
+        - 30-day threshold avoids false positives from recent data delays
+
+    Example:
+        >>> from datetime import date
+        >>> # Enron delisted Dec 2, 2001; query period is 2020
+        >>> delistings = check_delisting_status(
+        ...     prices_df,
+        ...     query_end_date=date(2020, 12, 31),
+        ...     threshold_days=30
+        ... )
+        >>> print(delistings)
+        {'ENRN': datetime.date(2001, 12, 2)}
+    """
+    df = prices_df.copy()  # Preserve input immutability (ADR-004)
+
+    result: dict[str, date_type] = {}
+
+    # Get unique symbols from MultiIndex
+    if isinstance(df.index, pd.MultiIndex):
+        symbols = df.index.get_level_values("symbol").unique().tolist()
+        dates = df.index.get_level_values("date")
+    else:
+        return result  # Empty result for non-MultiIndex
+
+    # Use max date in DataFrame if query_end_date not specified
+    if query_end_date is None:
+        query_end_date = dates.max().date()
+
+    # Check each ticker's last trading date
+    for ticker in symbols:
+        # Extract dates for this ticker using MultiIndex slicing
+        ticker_data = df.loc[(slice(None), ticker), :]
+        ticker_dates = ticker_data.index.get_level_values("date")
+
+        if len(ticker_dates) == 0:
+            continue  # Skip tickers with no data
+
+        # Get last trading date for this ticker
+        last_date = ticker_dates.max().date()
+
+        # Calculate gap between last date and query end date
+        gap_days = (query_end_date - last_date).days
+
+        # Flag as delisted if gap exceeds threshold
+        if gap_days > threshold_days:
+            result[ticker] = last_date
+            logger.warning(
+                "Delisting detected",
+                layer="data",
+                operation="check_delisting_status",
+                ticker=ticker,
+                last_trading_date=last_date,
+                query_end_date=query_end_date,
+                gap_days=gap_days,
+                threshold_days=threshold_days,
+            )
+
+    return result
+
+
 @dataclass
 class ValidationReport:
     """Data quality validation report with comprehensive issue summary.
@@ -491,18 +635,76 @@ class ValidationReport:
     summary_message: str
     is_valid: bool
 
+    def __str__(self) -> str:
+        """Format validation report as human-readable string.
 
-def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
+        Returns:
+            str: Formatted report with clear section headers and readable structure.
+
+        Example Output:
+            ===== Validation Report =====
+            Total Tickers: 100
+            Date Range: 2020-01-01 to 2020-12-31
+            Missing Data: 5 ticker(s) with issues
+            Date Gaps: 2 ticker(s) with issues
+            Adjustment Issues: 1 ticker(s)
+            Delisting Events: 10 ticker(s)
+            Status: INVALID
+            Summary: Validation found issues: 5 ticker(s) with 12 missing value(s); ...
+            =============================
+        """
+        lines = ["===== Validation Report ====="]
+        lines.append(f"Total Tickers: {self.total_tickers}")
+        lines.append(f"Date Range: {self.date_range[0]} to {self.date_range[1]}")
+
+        # Missing data summary
+        if self.missing_data_counts:
+            lines.append(f"Missing Data: {len(self.missing_data_counts)} ticker(s) with issues")
+        else:
+            lines.append("Missing Data: None")
+
+        # Date gaps summary
+        if self.date_gaps:
+            lines.append(f"Date Gaps: {len(self.date_gaps)} ticker(s) with issues")
+        else:
+            lines.append("Date Gaps: None")
+
+        # Adjustment issues summary
+        if self.adjustment_issues:
+            lines.append(f"Adjustment Issues: {len(self.adjustment_issues)} ticker(s)")
+        else:
+            lines.append("Adjustment Issues: None")
+
+        # Delisting events summary
+        if self.delisting_events:
+            lines.append(f"Delisting Events: {len(self.delisting_events)} ticker(s)")
+        else:
+            lines.append("Delisting Events: None")
+
+        # Validation status
+        status_str = "VALID" if self.is_valid else "INVALID"
+        lines.append(f"Status: {status_str}")
+
+        # Summary message (appears prominently at end)
+        lines.append(f"Summary: {self.summary_message}")
+
+        lines.append("=============================")
+
+        return "\n".join(lines)
+
+
+def validate_prices(prices_df: pd.DataFrame, check_delistings: bool = True) -> ValidationReport:
     """Validate price data quality with comprehensive checks.
 
     Performs validation checks on price DataFrame including:
     1. Missing data detection (NaN/null values)
     2. Date gap identification (suspicious gaps in time series)
     3. Adjustment factor consistency (split/dividend validation)
-    4. Delisting status detection
+    4. Delisting status detection (optional, enabled by default)
 
     Args:
         prices_df: Price data with MultiIndex (date, symbol) and OHLC columns
+        check_delistings: If True, run delisting detection (default: True)
 
     Returns:
         ValidationReport: Comprehensive validation results with issue summary
@@ -524,8 +726,9 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
             - dividend: float64
 
     Note:
-        This is a skeleton implementation. Validation logic will be added in subsequent commits.
-        Currently returns minimal ValidationReport with no validation performed.
+        Delisting detection uses a heuristic: tickers with data ending > 30 days
+        before the DataFrame's max date are flagged as delisted. This is useful
+        for historical backtests with "Current & Past" watchlists.
     """
     logger.info("Starting price data validation", layer="data", operation="validate_prices")
 
@@ -553,13 +756,19 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
     # Check for adjustment consistency issues (negative prices, large jumps)
     adjustment_issues = _check_adjustment_consistency(prices_df)
 
-    # Future commits will implement:
-    # - check_delisting_status() for delisting detection
+    # Check for delisting events (optional)
+    if check_delistings:
+        # check_delisting_status returns dict[str, date_type], which is compatible with dict[str, date_type | None]
+        delisting_events: dict[str, date_type | None] = cast(
+            dict[str, date_type | None], check_delisting_status(prices_df, query_end_date=end_date)
+        )
+    else:
+        delisting_events = {}
 
-    # Determine validation status
+    # Determine validation status (delistings don't affect validity, just informational)
     is_valid = len(missing_data_counts) == 0 and len(date_gaps) == 0 and len(adjustment_issues) == 0
 
-    # Generate summary message
+    # Generate concise summary message (< 200 chars)
     issues = []
     if missing_data_counts:
         ticker_count = len(missing_data_counts)
@@ -572,9 +781,16 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
     if adjustment_issues:
         issue_count = len(adjustment_issues)
         issues.append(f"{issue_count} ticker(s) with adjustment issue(s)")
+    if delisting_events:
+        delisting_count = len(delisting_events)
+        issues.append(f"{delisting_count} delisted")
 
     if issues:
+        # Join issues with semicolons, truncate if > 200 chars
         summary_message = f"Validation found issues: {'; '.join(issues)}"
+        if len(summary_message) > 200:
+            # Truncate to 197 chars and add ellipsis
+            summary_message = summary_message[:197] + "..."
     else:
         summary_message = f"Validation complete: {total_tickers} tickers, no issues detected"
 
@@ -584,7 +800,7 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
         missing_data_counts=missing_data_counts,
         date_gaps=date_gaps,
         adjustment_issues=adjustment_issues,
-        delisting_events={},  # Future commits
+        delisting_events=delisting_events,
         summary_message=summary_message,
         is_valid=is_valid,
     )
@@ -595,6 +811,7 @@ def validate_prices(prices_df: pd.DataFrame) -> ValidationReport:
         operation="validate_prices",
         total_tickers=total_tickers,
         is_valid=report.is_valid,
+        delisting_count=len(delisting_events),
     )
 
     return report
