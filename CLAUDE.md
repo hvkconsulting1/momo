@@ -191,9 +191,8 @@ This project uses slash commands for AI-agent workflows:
 
 When implementing tests:
 1. Test ID from test design maps directly to file path (deterministic mapping)
-2. Create one test per file following naming convention
-3. Use story-level conftest.py for shared fixtures
-4. **REQUIRED:** Add both priority and level markers to ALL test functions:
+2. Use story-level conftest.py for shared fixtures
+3. **REQUIRED:** Add both priority and level markers to ALL test functions:
    - Priority: `@pytest.mark.p0`, `@pytest.mark.p1`, or `@pytest.mark.p2`
    - Level: `@pytest.mark.unit` or `@pytest.mark.integration`
    - Both markers must be present on every test function
