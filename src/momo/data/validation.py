@@ -305,7 +305,7 @@ def _check_adjustment_consistency(
 
         # Check 2: Large price jumps without dividend
         # Calculate day-over-day percentage change in close price
-        pct_changes = ticker_data["close"].pct_change()
+        pct_changes = ticker_data["close"].pct_change(fill_method=None)
 
         # Find dates where |pct_change| > threshold AND dividend == 0
         # Large jumps with dividend are likely justified (dividend payout or split with dividend)
